@@ -1,4 +1,4 @@
-import { defaultModel, getModelRotation, modelCatalog, resolveModel } from "./models";
+import { defaultModel, modelCatalog, resolveModel } from "./models";
 
 type Env = {
   DASHSCOPE_API_KEY: string;
@@ -32,18 +32,6 @@ function html(body: string): Response {
 }
 
 function homePage(): string {
-  const models = modelCatalog
-    .map(
-      (model) => `
-        <div class="card">
-          <div class="card__title">${model.label}</div>
-          <div class="card__id">${model.id}</div>
-          <div class="card__body">${model.purpose}</div>
-        </div>
-      `,
-    )
-    .join("");
-
   return `
     <!doctype html>
     <html lang="en">
@@ -53,52 +41,221 @@ function homePage(): string {
         <title>Ouwibo Agent</title>
         <style>
           :root { color-scheme: dark; }
+          * { box-sizing: border-box; }
           body {
             margin: 0;
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            background: radial-gradient(circle at top, #1f2937 0, #09090b 50%);
+            background:
+              radial-gradient(circle at top, rgba(56, 189, 248, 0.14), transparent 28%),
+              radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.12), transparent 22%),
+              linear-gradient(180deg, #050816 0%, #09090b 48%, #040404 100%);
             color: #f4f4f5;
           }
-          main { max-width: 1080px; margin: 0 auto; padding: 72px 24px 56px; }
-          .eyebrow { text-transform: uppercase; letter-spacing: .18em; color: #a1a1aa; font-size: 12px; }
-          h1 { margin: 12px 0 16px; font-size: clamp(40px, 7vw, 72px); line-height: .95; }
-          .lead { max-width: 720px; color: #d4d4d8; font-size: 18px; line-height: 1.7; }
-          .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 36px; }
-          .card {
-            border: 1px solid rgba(255,255,255,.08);
-            background: rgba(24,24,27,.72);
-            border-radius: 20px;
-            padding: 18px;
-            box-shadow: 0 24px 80px rgba(0,0,0,.24);
+          main { max-width: 1160px; margin: 0 auto; padding: 80px 24px 64px; }
+          .hero { display: grid; grid-template-columns: 1.3fr .9fr; gap: 24px; align-items: stretch; }
+          .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: .2em;
+            color: #a1a1aa;
+            font-size: 11px;
           }
-          .card__title { font-weight: 700; font-size: 17px; }
-          .card__id { margin-top: 8px; color: #60a5fa; font-size: 13px; }
-          .card__body { margin-top: 10px; color: #d4d4d8; line-height: 1.6; font-size: 14px; }
-          .panel { margin-top: 30px; padding: 18px 20px; border-radius: 18px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
-          code { background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 8px; }
-          ul { margin: 12px 0 0; padding-left: 20px; color: #d4d4d8; line-height: 1.7; }
+          .eyebrow::before {
+            content: '';
+            width: 42px;
+            height: 1px;
+            background: linear-gradient(90deg, #38bdf8, transparent);
+          }
+          h1 {
+            margin: 14px 0 16px;
+            font-size: clamp(44px, 8vw, 82px);
+            line-height: .92;
+            letter-spacing: -0.05em;
+            max-width: 10ch;
+          }
+          .lead {
+            max-width: 760px;
+            color: #d4d4d8;
+            font-size: 18px;
+            line-height: 1.75;
+            margin: 0;
+          }
+          .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 28px;
+          }
+          .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 18px;
+            border-radius: 999px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 14px;
+            border: 1px solid rgba(255,255,255,.12);
+            transition: transform .2s ease, border-color .2s ease, background .2s ease;
+          }
+          .button:hover { transform: translateY(-1px); }
+          .button--primary { background: linear-gradient(135deg, #2563eb, #06b6d4); color: white; }
+          .button--secondary { background: rgba(255,255,255,.04); color: #f4f4f5; }
+          .statcard, .panel, .feature {
+            border: 1px solid rgba(255,255,255,.08);
+            background: rgba(15, 23, 42, .58);
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            box-shadow: 0 24px 80px rgba(0,0,0,.32);
+          }
+          .statcard { padding: 22px; display: grid; gap: 14px; }
+          .statgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+          .stat {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.06);
+          }
+          .stat strong { display: block; font-size: 22px; margin-bottom: 6px; }
+          .stat span { color: #a1a1aa; font-size: 13px; line-height: 1.5; }
+          .panel { margin-top: 24px; padding: 20px 22px; }
+          .panel h2, .section h2 {
+            margin: 0 0 10px;
+            font-size: 22px;
+            letter-spacing: -0.02em;
+          }
+          .panel p, .section p { color: #d4d4d8; line-height: 1.7; margin: 0; }
+          .section { margin-top: 28px; }
+          .features {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+          }
+          .feature { padding: 18px; min-height: 160px; }
+          .feature h3 { margin: 0 0 10px; font-size: 16px; }
+          .feature p { margin: 0; color: #d4d4d8; line-height: 1.65; font-size: 14px; }
+          .api {
+            margin-top: 20px;
+            padding: 18px 20px;
+            border-radius: 20px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+          }
+          .api code, .chip code {
+            background: rgba(255,255,255,.08);
+            padding: 2px 8px;
+            border-radius: 8px;
+          }
+          .chiprow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+          .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,.08);
+            background: rgba(255,255,255,.04);
+            padding: 8px 12px;
+            color: #e4e4e7;
+            font-size: 13px;
+          }
+          @media (max-width: 960px) {
+            .hero { grid-template-columns: 1fr; }
+            .features { grid-template-columns: 1fr; }
+          }
         </style>
       </head>
       <body>
         <main>
-          <div class="eyebrow">Public AI Agent / Cloudflare Ready</div>
-          <h1>Ouwibo Agent</h1>
-          <p class="lead">
-            A polished, international AI agent foundation built for Cloudflare deployment.
-            Designed for both manual model selection and automatic model rotation.
-          </p>
+          <section class="hero">
+            <div>
+              <div class="eyebrow">Public AI Agent / Cloudflare Ready</div>
+              <h1>Ouwibo Agent</h1>
+              <p class="lead">
+                Ouwibo Agent is a public AI experience for your own brand: a polished website, a chat-ready API,
+                and a flexible backend that can adapt to multiple models without exposing the plumbing on the homepage.
+              </p>
+              <div class="actions">
+                <a class="button button--primary" href="#what">What it is</a>
+                <a class="button button--secondary" href="#api">API access</a>
+              </div>
+            </div>
 
-          <div class="panel">
-            Default model: <code>${defaultModel}</code> ·
-            API route: <code>/api/chat</code> ·
-            Health check: <code>/health</code>
-            <ul>
-              <li>Manual selection: send <code>{"model":"qwen3-max"}</code></li>
-              <li>Auto-rotate: send <code>{"mode":"auto"}</code> or <code>?mode=auto</code></li>
-            </ul>
-          </div>
+            <aside class="statcard">
+              <div class="statgrid">
+                <div class="stat">
+                  <strong>Public</strong>
+                  <span>A clean, shareable website for visitors.</span>
+                </div>
+                <div class="stat">
+                  <strong>Flexible</strong>
+                  <span>Manual model choice or automatic rotation.</span>
+                </div>
+                <div class="stat">
+                  <strong>Cloudflare</strong>
+                  <span>Deployable as a fast, global Worker.</span>
+                </div>
+                <div class="stat">
+                  <strong>Brand-first</strong>
+                  <span>Shows Ouwibo Agent, not backend vendor details.</span>
+                </div>
+              </div>
+            </aside>
+          </section>
 
-          <div class="grid">${models}</div>
+          <section class="panel section" id="what">
+            <h2>What Ouwibo Agent actually is</h2>
+            <p>
+              It is a branded agent platform for public use: a professional front door for your AI assistant,
+              designed to feel like a real product rather than a demo. Visitors see your brand, your message,
+              and a clean interface while the model routing stays behind the scenes.
+            </p>
+            <div class="chiprow">
+              <div class="chip"><code>AI assistant</code> for public visitors</div>
+              <div class="chip"><code>API-backed</code> for apps and integrations</div>
+              <div class="chip"><code>Model-agnostic</code> behind the scenes</div>
+              <div class="chip"><code>Cloudflare-friendly</code> deployment</div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="features">
+              <div class="feature">
+                <h3>Professional public brand</h3>
+                <p>
+                  The homepage introduces Ouwibo Agent as a real product, with a premium visual style and clear positioning.
+                </p>
+              </div>
+              <div class="feature">
+                <h3>Manual or automatic routing</h3>
+                <p>
+                  The backend can accept a model choice from the client, or rotate automatically when you want a hands-off mode.
+                </p>
+              </div>
+              <div class="feature">
+                <h3>Simple integration surface</h3>
+                <p>
+                  A small set of routes keeps the system easy to extend: homepage, health check, and chat API.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel section" id="api">
+            <h2>API access</h2>
+            <p>
+              Public frontend, private secret, and a clean API shape for your apps.
+            </p>
+            <div class="api" style="margin-top:14px;">
+              <div><strong>GET</strong> <code>/health</code></div>
+              <div style="margin-top:10px;"><strong>POST</strong> <code>/api/chat</code></div>
+              <div style="margin-top:10px;color:#d4d4d8;line-height:1.7;">
+                Example body: <code>{"message":"Hello","mode":"auto"}</code> or <code>{"message":"Hello","model":"qwen3-max"}</code>
+              </div>
+            </div>
+          </section>
         </main>
       </body>
     </html>
