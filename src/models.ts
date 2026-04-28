@@ -34,10 +34,6 @@ export function resolveModel(value: unknown): ModelId {
   return defaultModel;
 }
 
-export function getModelRotation(seed?: number): ModelId {
-  if (typeof seed === "number" && Number.isFinite(seed)) {
-    return modelCatalog[Math.abs(Math.floor(seed)) % modelCatalog.length].id;
-  }
-
+export function getModelRotation(): ModelId {
   return modelCatalog[Math.floor(Date.now() / 60_000) % modelCatalog.length].id;
 }
