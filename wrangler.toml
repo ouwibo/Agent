@@ -4,8 +4,3 @@ compatibility_date = "2024-01-01"
 
 [vars]
 DEFAULT_MODEL = "qwen3.5-plus"
-
-[[kv_namespaces]]
-binding = "KV"
-id = "cadec04b24074ebeb3443cce4e88e258"
-preview_id = "5abe6a2e1be342cf931f6b40c88f340f"
