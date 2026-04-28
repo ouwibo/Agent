@@ -1,7 +1,7 @@
 # Agent
 
 **Ouwibo Agent** is the public-facing name of this project.
-The repository name is `agent`, but the product identity stays **Ouwibo Agent** for a clean, professional brand.
+The repository name is `agent`, but the product identity remains **Ouwibo Agent** for a clean, professional global brand.
 
 ## What this repo is
 A Cloudflare-ready AI agent starter with:
@@ -36,7 +36,7 @@ Returns service status.
 Body:
 ```json
 {
-  "message": "Halo",
+  "message": "Hello",
   "model": "qwen3.5-plus"
 }
 ```
@@ -44,4 +44,4 @@ Body:
 Response includes the selected model, the answer, and usage metadata.
 
 ## Deployment target
-This repo is designed to deploy cleanly on Cloudflare Workers later.
+This repo is designed to deploy cleanly on Cloudflare Workers.

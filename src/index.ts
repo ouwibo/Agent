@@ -1,4 +1,4 @@
-import { defaultModel, modelCatalog, resolveModel } from "./models";
+import { defaultModel, getModelRotation, modelCatalog, resolveModel } from "./models";
 
 type Env = {
   DASHSCOPE_API_KEY: string;
@@ -46,7 +46,7 @@ function homePage(): string {
 
   return `
     <!doctype html>
-    <html lang="id">
+    <html lang="en">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -76,21 +76,26 @@ function homePage(): string {
           .card__body { margin-top: 10px; color: #d4d4d8; line-height: 1.6; font-size: 14px; }
           .panel { margin-top: 30px; padding: 18px 20px; border-radius: 18px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
           code { background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 8px; }
+          ul { margin: 12px 0 0; padding-left: 20px; color: #d4d4d8; line-height: 1.7; }
         </style>
       </head>
       <body>
         <main>
-          <div class="eyebrow">Agent Repo / Cloudflare Ready</div>
+          <div class="eyebrow">Public AI Agent / Cloudflare Ready</div>
           <h1>Ouwibo Agent</h1>
           <p class="lead">
-            A clean, professional AI agent foundation for Cloudflare deployment.
-            Built for manual model selection, Qwen/DashScope integration, and a polished public identity.
+            A polished, international AI agent foundation built for Cloudflare deployment.
+            Designed for both manual model selection and automatic model rotation.
           </p>
 
           <div class="panel">
             Default model: <code>${defaultModel}</code> ·
             API route: <code>/api/chat</code> ·
             Health check: <code>/health</code>
+            <ul>
+              <li>Manual selection: send <code>{"model":"qwen3-max"}</code></li>
+              <li>Auto-rotate: send <code>{"mode":"auto"}</code> or <code>?mode=auto</code></li>
+            </ul>
           </div>
 
           <div class="grid">${models}</div>
@@ -111,6 +116,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     );
   }
 
+  const url = new URL(request.url);
   const payload = await request.json().catch(() => ({} as Record<string, unknown>));
   const message = typeof payload.message === "string" ? payload.message : typeof payload.prompt === "string" ? payload.prompt : "";
 
@@ -118,7 +124,19 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     return json({ error: "message is required" }, 400);
   }
 
-  const model = resolveModel(payload.model ?? env.DEFAULT_MODEL ?? defaultModel);
+  const modelPreference =
+    typeof payload.model === "string"
+      ? payload.model
+      : typeof url.searchParams.get("model") === "string"
+        ? url.searchParams.get("model")
+        : undefined;
+
+  const rotationRequested =
+    payload.mode === "auto" ||
+    url.searchParams.get("mode") === "auto" ||
+    url.searchParams.get("rotate") === "1";
+
+  const model = rotationRequested ? getModelRotation(typeof payload.seed === "number" ? payload.seed : undefined) : resolveModel(modelPreference ?? env.DEFAULT_MODEL ?? defaultModel);
   const baseUrl = (env.DASHSCOPE_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
 
   const upstream = await fetch(`${baseUrl}/chat/completions`, {
@@ -158,6 +176,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       : "";
 
   return json({
+    mode: rotationRequested ? "auto" : "manual",
     model,
     answer,
     usage: (data as { usage?: unknown }).usage ?? null,
