@@ -1,0 +1,7 @@
+name = "agent"
+main = "src/index.ts"
+compatibility_date = "2026-04-28"
+workers_dev = true
+
+[vars]
+DEFAULT_MODEL = "qwen3.5-plus"
