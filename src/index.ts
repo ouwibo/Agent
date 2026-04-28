@@ -32,6 +32,12 @@ function html(body: string): Response {
 }
 
 function homePage(): string {
+  const modelOptions = modelCatalog
+    .map(
+      (model) => `<option value="${model.id}">${model.label}</option>`,
+    )
+    .join("");
+
   return `
     <!doctype html>
     <html lang="en">
@@ -161,6 +167,41 @@ function homePage(): string {
             color: #e4e4e7;
             font-size: 13px;
           }
+          .chat-shell {
+            margin-top: 24px;
+            padding: 18px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,.08);
+            background: rgba(15, 23, 42, .72);
+            box-shadow: 0 24px 80px rgba(0,0,0,.32);
+          }
+          .chat-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+          .chat-title { margin: 0; font-size: 18px; }
+          .chat-subtitle { margin: 6px 0 0; color: #a1a1aa; font-size: 13px; line-height: 1.5; }
+          .chat-controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+          .chat-controls select, .chat-controls button, .chat-input {
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,.12);
+            background: rgba(255,255,255,.05);
+            color: #f4f4f5;
+            font: inherit;
+          }
+          .chat-controls select { padding: 10px 12px; }
+          .chat-controls button { padding: 10px 14px; cursor: pointer; }
+          .chat-log { margin-top: 16px; display: grid; gap: 12px; max-height: 380px; overflow: auto; padding-right: 2px; }
+          .bubble {
+            padding: 14px 16px;
+            border-radius: 18px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+          }
+          .bubble--user { background: linear-gradient(135deg, rgba(37,99,235,.26), rgba(6,182,212,.18)); border: 1px solid rgba(96,165,250,.28); justify-self: end; max-width: 92%; }
+          .bubble--assistant { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); max-width: 92%; }
+          .chat-compose { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 16px; }
+          .chat-input { padding: 12px 14px; min-height: 48px; }
+          .chat-input::placeholder { color: #71717a; }
+          .chat-status { margin-top: 10px; color: #a1a1aa; font-size: 12px; }
+          .muted { color: #a1a1aa; }
           @media (max-width: 960px) {
             .hero { grid-template-columns: 1fr; }
             .features { grid-template-columns: 1fr; }
@@ -243,6 +284,32 @@ function homePage(): string {
             </div>
           </section>
 
+          <section class="panel section" id="chat">
+            <div class="chat-head">
+              <div>
+                <h2 class="chat-title">Live chat demo</h2>
+                <p class="chat-subtitle">Try the public experience. You can choose a model or leave it on auto.</p>
+              </div>
+              <span class="muted">Powered by the backend API</span>
+            </div>
+
+            <div class="chat-controls">
+              <select id="model-select" aria-label="Model selection">
+                <option value="auto">Auto rotate</option>
+                ${modelOptions}
+              </select>
+              <button id="clear-chat" type="button">Clear chat</button>
+            </div>
+
+            <div id="chat-log" class="chat-log" aria-live="polite"></div>
+
+            <form id="chat-form" class="chat-compose">
+              <input id="chat-input" class="chat-input" type="text" placeholder="Say hello to Ouwibo Agent..." autocomplete="off" />
+              <button id="send-btn" type="submit">Send</button>
+            </form>
+            <div id="chat-status" class="chat-status">Ready.</div>
+          </section>
+
           <section class="panel section" id="api">
             <h2>API access</h2>
             <p>
@@ -257,6 +324,73 @@ function homePage(): string {
             </div>
           </section>
         </main>
+
+        <script>
+          const form = document.getElementById('chat-form');
+          const input = document.getElementById('chat-input');
+          const log = document.getElementById('chat-log');
+          const status = document.getElementById('chat-status');
+          const select = document.getElementById('model-select');
+          const clearBtn = document.getElementById('clear-chat');
+          const sendBtn = document.getElementById('send-btn');
+
+          const addBubble = (kind, text) => {
+            const div = document.createElement('div');
+            div.className = 'bubble bubble--' + kind;
+            div.textContent = text;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+          };
+
+          const setBusy = (busy) => {
+            sendBtn.disabled = busy;
+            input.disabled = busy;
+            status.textContent = busy ? 'Thinking...' : 'Ready.';
+          };
+
+          clearBtn.addEventListener('click', () => {
+            log.innerHTML = '';
+            status.textContent = 'Chat cleared.';
+            input.focus();
+          });
+
+          addBubble('assistant', 'Hello. I am Ouwibo Agent — a branded public AI assistant for your website. Ask me anything.');
+
+          form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const message = input.value.trim();
+            if (!message) return;
+
+            addBubble('user', message);
+            input.value = '';
+            setBusy(true);
+
+            try {
+              const modelValue = select.value;
+              const body = modelValue === 'auto'
+                ? { message, mode: 'auto' }
+                : { message, model: modelValue };
+
+              const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(body),
+              });
+
+              const data = await response.json();
+              if (!response.ok) {
+                addBubble('assistant', data.error || 'Something went wrong.');
+              } else {
+                addBubble('assistant', data.answer || 'No answer returned.');
+              }
+            } catch (error) {
+              addBubble('assistant', 'Network error. Please try again.');
+            } finally {
+              setBusy(false);
+              input.focus();
+            }
+          });
+        </script>
       </body>
     </html>
   `;
@@ -273,7 +407,6 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     );
   }
 
-  const url = new URL(request.url);
   const payload = await request.json().catch(() => ({} as Record<string, unknown>));
   const message = typeof payload.message === "string" ? payload.message : typeof payload.prompt === "string" ? payload.prompt : "";
 
@@ -281,19 +414,9 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     return json({ error: "message is required" }, 400);
   }
 
-  const modelPreference =
-    typeof payload.model === "string"
-      ? payload.model
-      : typeof url.searchParams.get("model") === "string"
-        ? url.searchParams.get("model")
-        : undefined;
-
-  const rotationRequested =
-    payload.mode === "auto" ||
-    url.searchParams.get("mode") === "auto" ||
-    url.searchParams.get("rotate") === "1";
-
-  const model = rotationRequested ? getModelRotation(typeof payload.seed === "number" ? payload.seed : undefined) : resolveModel(modelPreference ?? env.DEFAULT_MODEL ?? defaultModel);
+  const model = payload.mode === "auto"
+    ? defaultModel
+    : resolveModel(payload.model ?? env.DEFAULT_MODEL ?? defaultModel);
   const baseUrl = (env.DASHSCOPE_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
 
   const upstream = await fetch(`${baseUrl}/chat/completions`, {
@@ -333,7 +456,6 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       : "";
 
   return json({
-    mode: rotationRequested ? "auto" : "manual",
     model,
     answer,
     usage: (data as { usage?: unknown }).usage ?? null,
