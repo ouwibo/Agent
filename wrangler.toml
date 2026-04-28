@@ -1,7 +1,11 @@
 name = "agent"
 main = "src/index.ts"
-compatibility_date = "2026-04-28"
-workers_dev = true
+compatibility_date = "2024-01-01"
 
 [vars]
 DEFAULT_MODEL = "qwen3.5-plus"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_YOUR_PREVIEW_KV_ID"
