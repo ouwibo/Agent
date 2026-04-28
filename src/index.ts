@@ -12,6 +12,28 @@ type RequestPayload = {
   mode?: string;
   sessionId?: string;
   stream?: boolean;
+  // Agent mode
+  agentMode?: boolean;
+  autoPlan?: boolean;
+};
+
+// Agent types
+type AgentStep = {
+  thought: string;
+  plan: string[];
+  action: string;
+  tool: string | null;
+  input: string | null;
+  result: string | null;
+  final_answer: string | null;
+};
+
+type AgentState = {
+  steps: AgentStep[];
+  currentStep: number;
+  memory: string[];
+  status: 'planning' | 'executing' | 'reflecting' | 'complete' | 'error';
+  goal: string;
 };
 
 type Env = {
@@ -1120,6 +1142,174 @@ function buildModelsPayload() {
   };
 }
 
+// Agent System - Planning, Execution, Reflection
+const AGENT_MAX_STEPS = 10;
+
+const AGENT_SYSTEM_PROMPT = `You are a reliable autonomous AI agent designed to execute tasks accurately, efficiently, and safely.
+
+OBJECTIVE
+Understand user intent, break tasks into steps, use tools when needed, and return validated results.
+
+CORE RULES
+- Think step-by-step but keep reasoning concise
+- Never assume missing information
+- Prefer tools over guessing
+- Validate results before responding
+- Be deterministic and efficient
+- Avoid unnecessary verbosity
+
+EXECUTION FLOW
+1. Analyze request
+2. Define goal
+3. Create step-by-step plan
+4. Decide tool usage
+5. Execute actions
+6. Validate output
+7. Return structured result
+
+OUTPUT FORMAT (STRICT JSON ONLY)
+{
+  "thought": "short reasoning",
+  "plan": ["step1", "step2"],
+  "action": "current action",
+  "tool": "tool name or none",
+  "input": "tool input",
+  "result": "execution result",
+  "final_answer": "final response"
+}`;
+
+async function callAgentLLM(env: Env, messages: ChatMessage[]): Promise<string> {
+  const baseUrl = (env.DASHSCOPE_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
+  
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.DASHSCOPE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: getDefaultModel(env),
+      messages,
+    }),
+  });
+
+  const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+  return data.choices?.[0]?.message?.content || "";
+}
+
+async function handleAgentRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  if (!env.DASHSCOPE_API_KEY) {
+    return jsonResponse({ error: "Missing configuration" }, 500);
+  }
+
+  const payload = await parseJsonPayload(request);
+  if (!payload?.message) {
+    return jsonResponse({ error: "message is required" }, 400);
+  }
+
+  const sessionId = getSessionId(payload);
+  const rate = await rateLimit(env, request);
+  if (!rate.allowed) {
+    return jsonResponse({ error: "Rate limit exceeded" }, 429);
+  }
+
+  const state: AgentState = {
+    steps: [],
+    currentStep: 0,
+    memory: [],
+    status: 'planning',
+    goal: payload.message,
+  };
+
+  // Step 1: Planning
+  const planMessages: ChatMessage[] = [
+    { role: "system", content: AGENT_SYSTEM_PROMPT },
+    { role: "user", content: `Plan this task: ${payload.message}\n\nRespond with JSON containing: goal, steps[], required_tools[]` },
+  ];
+
+  const planResponse = await callAgentLLM(env, planMessages);
+  
+  let plan: { goal: string; steps: string[]; required_tools: string[] };
+  try {
+    plan = JSON.parse(planResponse);
+  } catch {
+    plan = { goal: payload.message, steps: [payload.message], required_tools: [] };
+  }
+
+  state.goal = plan.goal;
+  state.memory.push(`Plan: ${plan.steps.join(' → ')}`);
+  state.status = 'executing';
+
+  // Step 2: Execute each step
+  for (let i = 0; i < Math.min(plan.steps.length, AGENT_MAX_STEPS); i++) {
+    const step = plan.steps[i];
+    
+    const execMessages: ChatMessage[] = [
+      { role: "system", content: AGENT_SYSTEM_PROMPT },
+      { role: "user", content: `Execute step: ${step}\n\nContext: ${state.memory.join('\n')}\n\nRespond with JSON containing: action, tool (or null), input (or null), result` },
+    ];
+
+    const execResponse = await callAgentLLM(env, execMessages);
+    
+    let stepResult: AgentStep;
+    try {
+      stepResult = JSON.parse(execResponse);
+    } catch {
+      stepResult = {
+        thought: `Executing: ${step}`,
+        plan: plan.steps,
+        action: step,
+        tool: null,
+        input: null,
+        result: execResponse,
+        final_answer: null,
+      };
+    }
+
+    state.steps.push(stepResult);
+    state.currentStep++;
+    state.memory.push(`Step ${i + 1}: ${stepResult.action} → ${stepResult.result?.slice(0, 200) || 'done'}`);
+  }
+
+  // Step 3: Reflection
+  state.status = 'reflecting';
+  
+  const reflectMessages: ChatMessage[] = [
+    { role: "system", content: AGENT_SYSTEM_PROMPT },
+    { role: "user", content: `Evaluate result for goal: ${state.goal}\n\nSteps taken:\n${state.steps.map((s, i) => `${i + 1}. ${s.action}: ${s.result}`).join('\n')}\n\nIs this correct? Respond with JSON: { correct: boolean, improvement: string or null, final_answer: string }` },
+  ];
+
+  const reflectResponse = await callAgentLLM(env, reflectMessages);
+  
+  let reflection: { correct: boolean; improvement: string | null; final_answer: string };
+  try {
+    reflection = JSON.parse(reflectResponse);
+  } catch {
+    reflection = { correct: true, improvement: null, final_answer: reflectResponse };
+  }
+
+  state.status = 'complete';
+
+  // Save to memory
+  const conversation = await loadConversation(env, sessionId);
+  const nextMessages = clampHistory([
+    ...conversation.messages,
+    { role: "user", content: payload.message },
+    { role: "assistant", content: reflection.final_answer },
+  ]);
+  ctx.waitUntil(saveConversation(env, { sessionId, messages: nextMessages, updatedAt: Date.now() }));
+
+  return jsonResponse({
+    ok: true,
+    sessionId,
+    goal: state.goal,
+    plan: plan.steps,
+    steps: state.steps,
+    reflection,
+    final_answer: reflection.final_answer,
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === "OPTIONS") {
@@ -1158,6 +1348,10 @@ export default {
 
     if (url.pathname === "/api/chat" && request.method === "POST") {
       return handleChat(request, env, ctx);
+    }
+
+    if (url.pathname === "/api/agent" && request.method === "POST") {
+      return handleAgentRequest(request, env, ctx);
     }
 
     if (url.pathname === "/robots.txt") {

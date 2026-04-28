@@ -1,0 +1,11 @@
+Execute the given step.
+Rules:
+- Use tools if needed
+- Keep output minimal
+- Return result only
+
+If tool needed:
+{"tool": "tool_name", "input": "tool input"}
+
+If no tool:
+{"result": "your result"}
