@@ -7,5 +7,5 @@ DEFAULT_MODEL = "qwen3.5-plus"
 
 [[kv_namespaces]]
 binding = "KV"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
-preview_id = "REPLACE_WITH_YOUR_PREVIEW_KV_ID"
+id = "cadec04b24074ebeb3443cce4e88e258"
+preview_id = "5abe6a2e1be342cf931f6b40c88f340f"
