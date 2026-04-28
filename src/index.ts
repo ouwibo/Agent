@@ -1,9 +1,16 @@
-import { defaultModel, modelCatalog, resolveModel } from "./models";
+import { defaultModel, modelCatalog, resolveModel, getModelRotation } from "./models";
 
 type Env = {
   DASHSCOPE_API_KEY: string;
   DASHSCOPE_BASE_URL?: string;
   DEFAULT_MODEL?: string;
+};
+
+type RequestPayload = {
+  message?: string;
+  prompt?: string;
+  mode?: string;
+  model?: string;
 };
 
 const corsHeaders = {
@@ -31,12 +38,25 @@ function html(body: string): Response {
   });
 }
 
-function homePage(): string {
+function svgResponse(svg: string): Response {
+  return new Response(svg, {
+    headers: { "Content-Type": "image/svg+xml; charset=utf-8" },
+  });
+}
+
+function homePage(baseUrl: string): string {
   const modelOptions = modelCatalog
     .map(
       (model) => `<option value="${model.id}">${model.label}</option>`,
     )
     .join("");
+
+  const title = "Ouwibo Agent";
+  const description =
+    "Ouwibo Agent is a public AI experience for your own brand: a polished website, a chat-ready API, and a flexible backend that can adapt to multiple models without exposing the plumbing on the homepage.";
+  const canonical = `${baseUrl.replace(/\/$/, "")}/`;
+  const ogImage = `${baseUrl.replace(/\/$/, "")}/og-image.svg`;
+  const favicon = `${baseUrl.replace(/\/$/, "")}/favicon.svg`;
 
   return `
     <!doctype html>
@@ -44,7 +64,37 @@ function homePage(): string {
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Ouwibo Agent</title>
+        <meta name="description" content="${description}" />
+        <meta name="robots" content="index,follow" />
+        <link rel="canonical" href="${canonical}" />
+        <link rel="icon" href="${favicon}" type="image/svg+xml" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="${title}" />
+        <meta property="og:description" content="${description}" />
+        <meta property="og:url" content="${canonical}" />
+        <meta property="og:image" content="${ogImage}" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="${title}" />
+        <meta name="twitter:description" content="${description}" />
+        <meta name="twitter:image" content="${ogImage}" />
+        <meta name="theme-color" content="#050816" />
+        <title>${title}</title>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "name": "Ouwibo Agent",
+          "description": "${description}",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Cloudflare Workers",
+          "url": "${canonical}",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          }
+        }
+        </script>
         <style>
           :root { color-scheme: dark; }
           * { box-sizing: border-box; }
@@ -284,7 +334,7 @@ function homePage(): string {
             </div>
           </section>
 
-          <section class="panel section" id="chat">
+          <section class="panel section chat-shell" id="chat">
             <div class="chat-head">
               <div>
                 <h2 class="chat-title">Live chat demo</h2>
@@ -317,6 +367,7 @@ function homePage(): string {
             </p>
             <div class="api" style="margin-top:14px;">
               <div><strong>GET</strong> <code>/health</code></div>
+              <div style="margin-top:10px;"><strong>GET</strong> <code>/api/models</code></div>
               <div style="margin-top:10px;"><strong>POST</strong> <code>/api/chat</code></div>
               <div style="margin-top:10px;color:#d4d4d8;line-height:1.7;">
                 Example body: <code>{"message":"Hello","mode":"auto"}</code> or <code>{"message":"Hello","model":"qwen3-max"}</code>
@@ -407,7 +458,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     );
   }
 
-  const payload = await request.json().catch(() => ({} as Record<string, unknown>));
+  const payload = (await request.json().catch(() => ({}))) as RequestPayload;
   const message = typeof payload.message === "string" ? payload.message : typeof payload.prompt === "string" ? payload.prompt : "";
 
   if (!message.trim()) {
@@ -415,8 +466,9 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   }
 
   const model = payload.mode === "auto"
-    ? defaultModel
+    ? getModelRotation()
     : resolveModel(payload.model ?? env.DEFAULT_MODEL ?? defaultModel);
+
   const baseUrl = (env.DASHSCOPE_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
 
   const upstream = await fetch(`${baseUrl}/chat/completions`, {
@@ -462,6 +514,45 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   });
 }
 
+function ogImageSvg(title: string, description: string): string {
+  const safeTitle = title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safeDescription = description.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `
+    <svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#050816"/>
+          <stop offset="1" stop-color="#0F172A"/>
+        </linearGradient>
+        <radialGradient id="r" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(210 110) rotate(35) scale(420 300)">
+          <stop stop-color="#38BDF8" stop-opacity="0.28"/>
+          <stop offset="1" stop-color="#38BDF8" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="1200" height="630" fill="url(#g)"/>
+      <rect width="1200" height="630" fill="url(#r)"/>
+      <circle cx="1020" cy="120" r="150" fill="#2563EB" fill-opacity="0.16"/>
+      <circle cx="980" cy="520" r="190" fill="#06B6D4" fill-opacity="0.14"/>
+      <text x="84" y="200" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="700">${safeTitle}</text>
+      <text x="84" y="272" fill="#93C5FD" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="600">Public AI Agent / Cloudflare Ready</text>
+      <text x="84" y="344" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="30">${safeDescription}</text>
+      <rect x="84" y="412" width="360" height="56" rx="28" fill="#2563EB"/>
+      <text x="126" y="449" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="600">Ouwibo Agent</text>
+    </svg>
+  `;
+}
+
+function faviconSvg(): string {
+  return `
+    <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="64" height="64" rx="18" fill="#050816"/>
+      <path d="M14 42C20 20 44 16 50 24C55 31 47 46 32 48C24 49 17 47 14 42Z" fill="#38BDF8" fill-opacity="0.18"/>
+      <path d="M18 40C22 27 33 20 45 22" stroke="#38BDF8" stroke-width="4" stroke-linecap="round"/>
+      <path d="M20 44C30 40 39 41 46 46" stroke="#E2E8F0" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+  `;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") {
@@ -469,9 +560,10 @@ export default {
     }
 
     const url = new URL(request.url);
+    const baseUrl = url.origin;
 
     if (url.pathname === "/") {
-      return html(homePage());
+      return html(homePage(baseUrl));
     }
 
     if (url.pathname === "/health") {
@@ -482,8 +574,41 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/models") {
+      return json({
+        defaultModel: env.DEFAULT_MODEL || defaultModel,
+        mode: "manual-or-auto-rotate",
+        models: modelCatalog,
+      });
+    }
+
     if (url.pathname === "/api/chat" && request.method === "POST") {
       return handleChat(request, env);
+    }
+
+    if (url.pathname === "/og-image.svg") {
+      return svgResponse(ogImageSvg("Ouwibo Agent", "Public AI Agent / Cloudflare Ready"));
+    }
+
+    if (url.pathname === "/favicon.svg") {
+      return svgResponse(faviconSvg());
+    }
+
+    if (url.pathname === "/robots.txt") {
+      return new Response("User-agent: *\nAllow: /\nSitemap: /sitemap.xml", {
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
+
+    if (url.pathname === "/sitemap.xml") {
+      return new Response(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}/</loc>
+  </url>
+</urlset>`, {
+        headers: { "Content-Type": "application/xml" },
+      });
     }
 
     return json({ error: "Not found" }, 404);
