@@ -311,8 +311,10 @@ export default {
     const url = new URL(request.url);
     const base = url.origin;
 
-    // Static routes
-    if (url.pathname === "/") return new Response(buildUI(base), { headers: cors({ "Content-Type": "text/html; charset=utf-8" }) });
+    // Redirect root to agent-ui for frontend
+    if (url.pathname === "/") {
+      return Response.redirect("https://agent-ui.ouwibo.workers.dev", 302);
+    }
     if (url.pathname === "/favicon.svg") return new Response(favicon(), { headers: cors({ "Content-Type": "image/svg+xml" }) });
     if (url.pathname === "/robots.txt") return text("User-agent: *\nAllow: /\nSitemap: " + base + "/sitemap.xml");
     if (url.pathname === "/sitemap.xml") return text('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' + base + '/</loc></url></urlset>', "application/xml");
