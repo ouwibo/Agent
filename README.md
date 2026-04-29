@@ -1,75 +1,45 @@
 <div align="center">
-  <img src="frontend/public/favicon.svg" alt="Ouwibo Agent Logo" width="80" height="80">
+  <img src="frontend/public/favicon.svg" alt="Ouwibo Agent" width="80" height="80">
   
   <h1>Ouwibo Agent</h1>
   
-  <p><strong>Your Intelligent, Extensible AI Assistant built for the Modern Web & Web3.</strong></p>
+  <p><strong>Professional AI Agent with Premium Dark UI</strong></p>
   
   <p>
-    <a href="#features">Features</a> •
-    <a href="#quick-start">Quick Start</a> •
-    <a href="#api-documentation">API</a> •
-    <a href="#deployment">Deployment</a> •
-    <a href="https://github.com/ouwibo/Agent">GitHub</a>
+    <a href="https://ouwibo-agent.ouwibo.workers.dev">Live API</a> •
+    <a href="https://github.com/ouwibo/Agent">GitHub</a> •
+    <a href="#-api-documentation">API Docs</a>
   </p>
 
   [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
   [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-  [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-F38020?logo=Cloudflare&logoColor=white)](https://workers.cloudflare.com/)
+  [![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=Cloudflare&logoColor=white)](https://pages.cloudflare.com/)
+  [![Next.js](https://img.shields.io/badge/Next.js_15-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
 </div>
 
 ---
 
 ## ✨ Features
 
-### 🧠 Intelligent Conversational Agent
-- **Powered by LLMs:** Dynamic step-by-step reasoning via Qwen/Groq/OpenAI
-- **Session Memory:** Remembers conversations across reloads
-- **Multilingual UI:** Natively supports multiple languages
+### 🎨 Premium Dark UI
+- **Next.js 15** + React 19 + TypeScript
+- **Tailwind CSS** with custom dark theme
+- **7 reusable components** - Chat, Message, Model Selector, etc.
+- **Responsive** - Mobile-first design
+- **Real-time chat** with 4 AI models
 
-### 🛠️ Built-in Tools & Web3 Capabilities
-- **Wallet Scan:** Check multi-chain balances and resolve `.eth` names
-- **Crypto Market Data:** Live token prices, tops, and trends
-- **Global Search & Web Reading:** DuckDuckGo/Google integration
-- **Utility Tools:** Currency conversion, date/time, weather, translation
+### 🧠 AI Models
+| Model | Description |
+|-------|-------------|
+| `qwen3.6-flash` | Fast responses |
+| `qwen3.5-plus` | Balanced (default) |
+| `qwen3-max` | Advanced reasoning |
+| `qwq-plus` | Deep thinking |
 
-### 🔌 Extensible Skills Architecture
-Drop a new `SKILL.md` into the skills folder, and the agent instantly learns new capabilities.
-
-### 🌐 Enterprise Ready
-- Rate limiting & API key management
-- Proper error handling & CORS configuration
-- Edge deployment on Cloudflare Workers
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ or Bun
-- Cloudflare account (for deployment)
-
-### Local Development
-
-```bash
-# Clone the repository
-git clone https://github.com/ouwibo/Agent.git
-cd Agent
-
-# Install dependencies
-npm install
-
-# Start backend (Cloudflare Worker)
-cd backend
-npm run dev
-
-# In another terminal, start frontend
-cd frontend
-npm run dev
-```
-
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8787
+### 🚀 Edge Deployment
+- **Backend**: Cloudflare Workers (serverless)
+- **Frontend**: Cloudflare Pages (global CDN)
+- **Zero cold starts**
 
 ---
 
@@ -78,20 +48,54 @@ npm run dev
 ```
 ouwibo/Agent/
 ├── backend/              # Cloudflare Workers API
-│   ├── src/
-│   │   ├── index.ts     # Main worker entry
-│   │   └── models.ts    # Model configuration
-│   └── wrangler.toml    # Cloudflare config
+│   ├── src/index.ts     # Main worker entry
+│   ├── src/models.ts    # Model configuration
+│   └── wrangler.toml    # Worker config
 │
-├── frontend/            # React + Vite + TailwindCSS
-│   ├── src/
-│   │   ├── pages/       # Landing, Dashboard, Docs
-│   │   ├── components/  # Reusable UI components
-│   │   └── styles.css   # TailwindCSS styles
-│   └── vite.config.ts
+├── frontend/            # Next.js 15 App
+│   ├── components/      # 7 UI components
+│   ├── pages/           # Landing + Chat
+│   ├── lib/             # API client + Store
+│   ├── types/           # TypeScript types
+│   └── styles/          # Tailwind CSS
 │
-├── docs/                # API documentation
-└── examples/            # Starter templates
+├── docs/                # Documentation
+└── examples/            # Example templates
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- Cloudflare account
+
+### 1. Clone & Install
+
+```bash
+git clone https://github.com/ouwibo/Agent.git
+cd Agent
+
+# Install backend
+cd backend && npm install
+
+# Install frontend
+cd ../frontend && npm install
+```
+
+### 2. Local Development
+
+```bash
+# Terminal 1: Backend
+cd backend
+npm run dev
+# → http://localhost:8787
+
+# Terminal 2: Frontend
+cd frontend
+npm run dev
+# → http://localhost:3000
 ```
 
 ---
@@ -100,54 +104,59 @@ ouwibo/Agent/
 
 ### Base URL
 ```
-https://ouwibo-agent.your-subdomain.workers.dev
+https://ouwibo-agent.ouwibo.workers.dev
 ```
 
 ### Endpoints
 
 #### `GET /api/health`
-Check API health and configuration status.
+Health check
+
+```json
+{
+  "ok": true,
+  "ready": true,
+  "model": "qwen3.5-plus"
+}
+```
+
+#### `GET /api/models`
+List available models
+
+```json
+{
+  "models": [
+    {"id": "qwen3.6-flash", "name": "Qwen 3.6 Flash"},
+    {"id": "qwen3.5-plus", "name": "Qwen 3.5 Plus"},
+    {"id": "qwen3-max", "name": "Qwen 3 Max"},
+    {"id": "qwq-plus", "name": "QwQ Plus"}
+  ],
+  "default": "qwen3.5-plus"
+}
+```
+
+#### `POST /api/chat`
+Send message to AI
+
+**Request:**
+```json
+{
+  "message": "Hello!",
+  "model": "qwen3.5-plus"
+}
+```
 
 **Response:**
 ```json
 {
   "ok": true,
-  "configured": true,
-  "ready": true,
-  "channel": "managed",
-  "model": "qwen3.5-plus"
-}
-```
-
-#### `POST /api/chat`
-Send a message to the AI agent.
-
-**Request:**
-```json
-{
-  "message": "What is the price of ETH?",
-  "conversationId": "optional-conversation-id"
-}
-```
-
-**Response:**
-```json
-{
-  "reply": "ETH is currently trading at $3,245...",
-  "conversationId": "conv_abc123",
-  "configured": true,
-  "channel": "managed"
-}
-```
-
-#### `GET /api/crypto-snapshot`
-Get cryptocurrency market snapshot.
-
-**Response:**
-```json
-{
-  "bitcoin": { "price": 67000, "change_24h": 2.5 },
-  "ethereum": { "price": 3245, "change_24h": 1.8 }
+  "answer": "Hi! How can I help?",
+  "model": "qwen3.5-plus",
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 20,
+    "total_tokens": 30
+  }
 }
 ```
 
@@ -155,89 +164,69 @@ Get cryptocurrency market snapshot.
 
 ## 🚢 Deployment
 
-### Cloudflare Workers (Backend)
+### Backend (Cloudflare Workers)
 
-1. Install Wrangler CLI:
-```bash
-npm install -g wrangler
-```
-
-2. Login to Cloudflare:
-```bash
-wrangler login
-```
-
-3. Set environment variables:
-```bash
-wrangler secret put DASHSCOPE_API_KEY
-```
-
-4. Deploy:
 ```bash
 cd backend
+
+# Login
+wrangler login
+
+# Set API key
+echo "your-dashscope-key" | wrangler secret put DASHSCOPE_API_KEY
+
+# Deploy
 npm run deploy
 ```
 
-### Frontend (Vercel/Netlify)
+### Frontend (Cloudflare Pages)
 
-1. Build the frontend:
 ```bash
 cd frontend
+
+# Build
 npm run build
+
+# Deploy
+npx wrangler pages deploy ./out
 ```
 
-2. Deploy the `dist/` folder to Vercel/Netlify
-
-3. Set environment variables:
-- `VITE_API_URL` = Your Cloudflare Worker URL
+Or connect GitHub repo to Cloudflare Pages dashboard for auto-deploy.
 
 ---
 
 ## 🔧 Configuration
 
-### Backend Environment Variables
+### Backend (.dev.vars)
+```
+DASHSCOPE_API_KEY=sk-your-key
+DEFAULT_MODEL=qwen3.5-plus
+```
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DASHSCOPE_API_KEY` | Qwen API key | Yes |
-| `DASHSCOPE_BASE_URL` | API base URL | No (default provided) |
-| `DEFAULT_MODEL` | Default model ID | No |
-
-### Frontend Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `VITE_API_URL` | Backend API URL | Yes (production) |
-
----
-
-## 🧪 Testing
-
-```bash
-# Run backend tests
-cd backend
-npm test
-
-# Run frontend tests
-cd frontend
-npm test
+### Frontend (.env.local)
+```
+NEXT_PUBLIC_API_URL=https://ouwibo-agent.ouwibo.workers.dev
 ```
 
 ---
 
-## 🤝 Contributing
+## 🧪 Tech Stack
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 15, React 19, TypeScript |
+| Styling | Tailwind CSS 4 |
+| State | Zustand |
+| HTTP | Axios |
+| Backend | Hono, Cloudflare Workers |
+| AI | Qwen (DashScope API) |
+| Linting | ESLint, Prettier |
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE)
 
 ---
 
