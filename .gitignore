@@ -10,6 +10,8 @@ build/
 .dev.vars
 .next/
 out/
+frontend-worker/
+frontend/out/
 
 # Environment files
 .env

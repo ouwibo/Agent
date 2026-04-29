@@ -1,86 +1,76 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-screen overflow-hidden bg-dark-900 pt-24">
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
+    <section className="relative min-h-screen bg-[#050816] text-white">
+      {/* Background Effects */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute inset-x-0 top-[-10rem] h-[40rem] bg-[radial-gradient(circle_at_top,_rgba(240,165,0,0.12),_transparent_50%)]" />
+        <div className="absolute right-[-12rem] top-[16rem] h-[24rem] w-[24rem] rounded-full bg-[radial-gradient(circle,_rgba(59,130,246,0.08),_transparent_66%)] blur-3xl" />
+        <div className="absolute left-[-12rem] bottom-[12rem] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,_rgba(34,197,94,0.06),_transparent_66%)] blur-3xl" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-2 lg:gap-8 items-center">
-          {/* Left Column */}
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <div className="inline-block rounded-full bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 text-sm text-blue-400">
-                🚀 Powered by Advanced AI
-              </div>
-              <h1 className="text-5xl font-bold leading-tight text-white sm:text-6xl">
-                Meet <span className="bg-gradient-premium bg-clip-text text-transparent">Ouwibo Agent</span>
-              </h1>
-              <p className="text-xl text-gray-400">
-                Experience the power of state-of-the-art AI models. From quick responses to deep analysis, Ouwibo Agent handles it all with precision and style.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <Link
-                href="/chat"
-                className="flex items-center justify-center gap-2 rounded-lg bg-gradient-premium px-8 py-4 font-semibold text-white hover:shadow-xl hover:shadow-blue-500/30 transition group"
-              >
-                Start Chatting
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition" />
-              </Link>
-              <Link
-                href="#docs"
-                className="flex items-center justify-center rounded-lg border border-gray-700 bg-dark-800/50 px-8 py-4 font-semibold text-white hover:border-blue-500 transition"
-              >
-                View Documentation
-              </Link>
-            </div>
+      <div className="relative mx-auto max-w-7xl px-6 py-20 lg:py-32">
+        <div className="text-center">
+          {/* Badge */}
+          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2">
+            <Sparkles className="h-4 w-4 text-amber-400" />
+            <span className="text-sm font-medium text-amber-200">AI Agent Platform</span>
           </div>
 
-          {/* Right Column - Feature Cards */}
-          <div className="grid grid-cols-2 gap-4">
-            <FeatureCard
-              title="⚡ Lightning Fast"
-              description="Qwen 3.6 Flash for instant responses"
-            />
-            <FeatureCard
-              title="⚖️ Balanced"
-              description="Qwen 3.5 Plus for most use cases"
-            />
-            <FeatureCard
-              title="🧠 Advanced Reasoning"
-              description="Qwen 3 Max for complex analysis"
-            />
-            <FeatureCard
-              title="🔬 Experimental"
-              description="QwQ Plus for cutting-edge tasks"
-            />
+          {/* Title */}
+          <h1 className="mb-6 text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl xl:text-8xl">
+            <span className="text-white">Professional AI</span>
+            <br />
+            <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
+              Agent Studio
+            </span>
+          </h1>
+
+          {/* Description */}
+          <p className="mx-auto mb-10 max-w-2xl text-lg text-gray-400 sm:text-xl">
+            Clean presentation. Focused chat. Strong hierarchy. Built to feel credible on first view.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link
+              href="/chat"
+              className="inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-8 text-base font-semibold text-black shadow-lg shadow-amber-500/25 transition hover:shadow-xl hover:shadow-amber-500/30"
+            >
+              Try the Chat
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+            <a
+              href="https://github.com/ouwibo/Agent"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 text-base font-semibold text-white transition hover:bg-white/10"
+            >
+              View on GitHub
+            </a>
+          </div>
+
+          {/* Stats */}
+          <div className="mt-16 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6">
+              <div className="text-3xl font-bold text-amber-400">24/7</div>
+              <div className="mt-1 text-sm text-gray-500">Availability</div>
+            </div>
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6">
+              <div className="text-3xl font-bold text-blue-400">Multi</div>
+              <div className="mt-1 text-sm text-gray-500">Model Support</div>
+            </div>
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6">
+              <div className="text-3xl font-bold text-green-400">Edge</div>
+              <div className="mt-1 text-sm text-gray-500">Deployment</div>
+            </div>
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function FeatureCard({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="group rounded-lg border border-gray-800 bg-dark-800/50 p-4 hover:border-blue-500/50 hover:bg-dark-800 transition">
-      <h3 className="font-semibold text-white">{title}</h3>
-      <p className="mt-1 text-sm text-gray-400">{description}</p>
-    </div>
   );
 }
