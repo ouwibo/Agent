@@ -9,6 +9,7 @@ build/
 .wrangler/
 .dev.vars
 .next/
+out/
 
 # Environment files
 .env
