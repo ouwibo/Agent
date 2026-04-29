@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-[#050816] text-white antialiased;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500;
+  }
+  
+  .glass-card {
+    @apply rounded-[28px] border border-white/10 bg-white/[0.04] backdrop-blur-xl;
+  }
+  
+  .btn-primary {
+    @apply inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-medium text-black shadow-[0_20px_50px_-20px_rgba(255,255,255,0.55)] transition hover:bg-white/90;
+  }
+  
+  .btn-secondary {
+    @apply inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-6 text-sm font-medium text-white transition hover:bg-white/10;
+  }
+  
+  .input-chat {
+    @apply h-12 flex-1 rounded-full border border-white/10 bg-white/5 px-5 text-sm text-white outline-none placeholder:text-white/35 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20;
+  }
+}
+
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
