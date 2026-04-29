@@ -1,17 +1,19 @@
 {
-  "name": "backend",
-  "module": "src/index.ts",
+  "name": "ouwibo-agent-backend",
+  "version": "2.0.0",
   "type": "module",
-  "private": true,
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260426.1",
-    "@types/bun": "latest",
-    "wrangler": "^4.86.0"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run"
   },
   "dependencies": {
-    "hono": "^4.12.15"
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240524.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "wrangler": "^3.0.0"
   }
 }

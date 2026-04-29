@@ -1,329 +1,278 @@
-import { defaultModel, modelCatalog, resolveModel, getModelRotation, isModelId } from "./models";
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { handleChat, chatOptions } from './handlers/chat';
+import { handleBalance, handleSwap, handlePrice, cryptoOptions } from './handlers/crypto';
+import { handleChatFrame, handleCryptoFrame, handleNFTFrame, frameOptions } from './handlers/frames';
+import { handleWalletConnect, handleWalletStatus, handleWalletDisconnect, walletOptions } from './handlers/wallet';
+import { getSupportedChains, getChainConfig } from './services/web3-service';
+import { getTokenPrices, TOKENS } from './services/swap-service';
 
-// ============== TYPES ==============
-type ChatMessage = { role: string; content: string };
-type Env = {
+export type Env = {
   DASHSCOPE_API_KEY: string;
   DASHSCOPE_BASE_URL?: string;
   DEFAULT_MODEL?: string;
+  ALCHEMY_API_KEY?: string;
+  MORALIS_API_KEY?: string;
+  NEYNAR_API_KEY?: string;
+  PRIVY_APP_ID?: string;
+  PRIVY_API_SECRET?: string;
+  JWT_SECRET?: string;
+  FRAME_BASE_URL?: string;
 };
 
-// ============== CONSTANTS ==============
-const MAX_MESSAGE_LENGTH = 10000;
-const ALLOWED_MODELS = new Set(modelCatalog.map(m => m.id));
+const app = new Hono<{ Bindings: Env }>();
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Accept",
-};
+// CORS middleware
+app.use('*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+}));
 
-// ============== HELPERS ==============
-const cors = (h: Record<string, string> = {}) => new Headers({ ...CORS, ...h });
-const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: cors({ "Content-Type": "application/json" }) });
-const text = (s: string, ct = "text/plain") => new Response(s, { headers: cors({ "Content-Type": ct }) });
-const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-const trim = (m: unknown): string | null => typeof m === "string" && m.trim() && m.length <= MAX_MESSAGE_LENGTH ? m.trim() : null;
+// ============== UI ROUTES ==============
 
-// ============== DASHSCOPE API ==============
-async function callDashScope(env: Env, model: string, messages: ChatMessage[], stream = false): Promise<Response> {
-  const base = (env.DASHSCOPE_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1").replace(/\/$/, "");
-  const ctrl = new AbortController();
-  const timeout = setTimeout(() => ctrl.abort(), 90000);
-  
-  try {
-    return await fetch(`${base}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.DASHSCOPE_API_KEY}`,
-        "Content-Type": "application/json",
-        Accept: stream ? "text/event-stream" : "application/json",
-      },
-      body: JSON.stringify({ model, messages, stream }),
-      signal: ctrl.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function humanizeError(status: number): string {
-  if (status === 401) return "API key invalid. Check configuration.";
-  if (status === 404) return "Model not available.";
-  if (status === 429) return "Rate limited. Try again later.";
-  if (status >= 500) return "Provider error. Try again.";
-  return "Request failed.";
-}
-
-// ============== ASSETS ==============
-const favicon = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#0a0a0b"/><circle cx="32" cy="32" r="16" fill="#f0a500"/><path d="M27 25l10 7-10 7V25z" fill="#0a0a0b"/></svg>`;
-
-// ============== UI ==============
-function buildUI(baseUrl: string): string {
-  const title = "Ouwibo Agent";
-  const description = "Production AI Agent - Multi-model chat with real-time responses.";
-  const modelOptions = modelCatalog.map(m => `<option value="${m.id}">${m.label}</option>`).join("");
-
-  return `<!DOCTYPE html>
+// Landing page
+app.get('/', (c) => {
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title}</title>
-<meta name="description" content="${description}">
-<meta name="robots" content="index,follow">
-<link rel="canonical" href="${baseUrl}/">
-<link rel="icon" href="${baseUrl}/favicon.svg" type="image/svg+xml">
-<meta property="og:type" content="website">
-<meta property="og:title" content="${title}">
-<meta property="og:description" content="${description}">
-<meta property="og:url" content="${baseUrl}/">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${title}">
-<meta name="twitter:description" content="${description}">
-<meta name="theme-color" content="#0a0a0b">
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-:root {
-  --bg: #0a0a0b;
-  --bg2: #111113;
-  --bg3: #18181c;
-  --border: rgba(255,255,255,0.08);
-  --text: #f0ede8;
-  --text2: #9d9a94;
-  --amber: #f0a500;
-  --amber2: #ffc340;
-  --green: #3ecf6e;
-  --radius: 16px;
-}
-
-html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; }
-
-.app { display: flex; flex-direction: column; height: 100vh; max-width: 1200px; margin: 0 auto; padding: 20px; }
-
-/* Header */
-.header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
-.brand { display: flex; align-items: center; gap: 12px; }
-.brand-mark { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, var(--amber), var(--amber2)); display: grid; place-items: center; color: var(--bg); font-weight: 800; font-size: 18px; }
-.brand-text h1 { font-size: 18px; font-weight: 600; }
-.brand-text p { font-size: 12px; color: var(--text2); }
-.status-badge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); }
-.status-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
-
-/* Chat Area */
-.chat-container { flex: 1; display: flex; flex-direction: column; margin-top: 20px; overflow: hidden; }
-.chat-log { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg2); border-radius: var(--radius); border: 1px solid var(--border); }
-.message { margin-bottom: 16px; }
-.message.user { text-align: right; }
-.bubble { display: inline-block; max-width: 80%; padding: 14px 18px; border-radius: 20px; text-align: left; line-height: 1.6; white-space: pre-wrap; }
-.message.user .bubble { background: linear-gradient(135deg, rgba(240,165,0,0.2), rgba(255,195,64,0.1)); border: 1px solid rgba(240,165,0,0.3); }
-.message.assistant .bubble { background: var(--bg3); border: 1px solid var(--border); }
-.message-meta { font-size: 11px; color: var(--text2); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
-
-/* Input Area */
-.input-area { margin-top: 16px; display: flex; gap: 12px; }
-.input-wrapper { flex: 1; }
-.input-field { width: 100%; padding: 16px; border-radius: var(--radius); background: var(--bg2); border: 1px solid var(--border); color: var(--text); font-size: 14px; outline: none; resize: none; min-height: 56px; }
-.input-field:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(240,165,0,0.1); }
-.input-field::placeholder { color: var(--text2); }
-.model-select { padding: 16px; border-radius: var(--radius); background: var(--bg2); border: 1px solid var(--border); color: var(--text); font-size: 13px; cursor: pointer; }
-.send-btn { padding: 16px 32px; border-radius: var(--radius); background: linear-gradient(135deg, var(--amber), var(--amber2)); border: none; color: var(--bg); font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.15s; }
-.send-btn:hover { transform: translateY(-1px); }
-.send-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-/* Footer */
-.footer { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center; font-size: 12px; color: var(--text2); }
-.footer a { color: var(--amber); text-decoration: none; }
-
-/* Responsive */
-@media (max-width: 768px) {
-  .app { padding: 16px; }
-  .input-area { flex-direction: column; }
-  .send-btn { width: 100%; }
-}
-
-/* Markdown Styles */
-.bubble h1, .bubble h2, .bubble h3 { margin: 16px 0 8px; }
-.bubble p { margin: 8px 0; }
-.bubble ul, .bubble ol { margin: 8px 0; padding-left: 24px; }
-.bubble code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
-.bubble pre { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
-.bubble pre code { background: none; padding: 0; }
-</style>
-</head>
-<body>
-<div class="app">
-  <header class="header">
-    <div class="brand">
-      <div class="brand-mark">O</div>
-      <div class="brand-text">
-        <h1>Ouwibo Agent</h1>
-        <p>Production AI Assistant</p>
-      </div>
-    </div>
-    <div class="status-badge">Online</div>
-  </header>
-
-  <div class="chat-container">
-    <div class="chat-log" id="chat-log"></div>
-    
-    <div class="input-area">
-      <div class="input-wrapper">
-        <textarea id="input" class="input-field" placeholder="Type your message..." rows="2"></textarea>
-      </div>
-      <select id="model" class="model-select">${modelOptions}</select>
-      <button id="send" class="send-btn">Send</button>
-    </div>
-  </div>
-
-  <footer class="footer">
-    Ouwibo Agent · Powered by Qwen · <a href="https://github.com/ouwibo/Agent" target="_blank">GitHub</a>
-  </footer>
-</div>
-
-<script>
-(function() {
-  const chatLog = document.getElementById('chat-log');
-  const input = document.getElementById('input');
-  const sendBtn = document.getElementById('send');
-  const modelSelect = document.getElementById('model');
-
-  function time() {
-    return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function escapeText(text) {
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
-  function renderMarkdown(text) {
-    if (window.marked) {
-      return marked.parse(text, { breaks: true, gfm: true });
-    }
-    return escapeText(text).replace(/\\n/g, '<br>');
-  }
-
-  function addMessage(role, content, isMarkdown = false) {
-    const div = document.createElement('div');
-    div.className = 'message ' + role;
-    
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.innerHTML = isMarkdown && role === 'assistant' ? renderMarkdown(content) : escapeText(content);
-    
-    const meta = document.createElement('div');
-    meta.className = 'message-meta';
-    meta.textContent = (role === 'user' ? 'You' : 'Ouwibo Agent') + ' · ' + time();
-    
-    div.appendChild(bubble);
-    div.appendChild(meta);
-    chatLog.appendChild(div);
-    chatLog.scrollTop = chatLog.scrollHeight;
-    
-    return bubble;
-  }
-
-  function setBusy(busy) {
-    sendBtn.disabled = busy;
-    input.disabled = busy;
-    sendBtn.textContent = busy ? 'Sending...' : 'Send';
-  }
-
-  async function send() {
-    const message = input.value.trim();
-    if (!message) return;
-
-    addMessage('user', message);
-    input.value = '';
-    setBusy(true);
-
-    const bubble = addMessage('assistant', 'Thinking...', false);
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, model: modelSelect.value })
-      });
-
-      const data = await res.json();
-      
-      if (!res.ok) {
-        bubble.textContent = data.error || 'Request failed';
-      } else {
-        bubble.innerHTML = renderMarkdown(data.answer || 'No response');
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ouwibo Agent - Web3 AI Platform</title>
+  <meta name="description" content="Advanced Web3 AI Platform with Chat, Crypto Trading, NFT Minting, and Farcaster Frames">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            dark: { 900: '#0a0a0f', 800: '#111118', 700: '#1a1a24' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
       }
-    } catch (err) {
-      bubble.textContent = 'Network error. Try again.';
-    } finally {
-      setBusy(false);
-      input.focus();
     }
-  }
-
-  sendBtn.addEventListener('click', send);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  });
-
-  // Welcome message
-  addMessage('assistant', 'Hello! I am Ouwibo Agent, your AI assistant. How can I help you today?', false);
-  input.focus();
-})();
-</script>
+  </script>
+</head>
+<body class="bg-dark-900 text-white min-h-screen">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-16">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center text-black font-bold text-xl">O</div>
+        <div>
+          <h1 class="text-xl font-bold">Ouwibo Agent</h1>
+          <p class="text-gray-400 text-sm">Web3 AI Platform</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded-full">● Online</span>
+        <a href="#/chat" class="px-6 py-2 bg-amber-500 hover:bg-amber-600 rounded-lg font-medium transition">Launch App</a>
+      </div>
+    </header>
+    
+    <!-- Hero -->
+    <section class="text-center py-20">
+      <h2 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">Web3 AI Platform</h2>
+      <p class="text-xl text-gray-400 max-w-2xl mx-auto mb-8">Chat with AI, trade crypto, mint NFTs, and interact with Farcaster Frames - all in one powerful platform.</p>
+      <div class="flex flex-wrap justify-center gap-4">
+        <a href="#/chat" class="px-8 py-4 bg-amber-500 hover:bg-amber-600 rounded-xl font-medium transition flex items-center gap-2">
+          <span>Start Chatting</span>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </a>
+        <a href="#/wallet" class="px-8 py-4 bg-dark-700 hover:bg-dark-800 border border-gray-700 rounded-xl font-medium transition">Connect Wallet</a>
+      </div>
+    </section>
+    
+    <!-- Features -->
+    <section class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+      <div class="p-6 bg-dark-800 rounded-2xl border border-gray-800">
+        <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+        </div>
+        <h3 class="text-lg font-semibold mb-2">AI Chat</h3>
+        <p class="text-gray-400 text-sm">Multi-model AI chat with Qwen, GPT-4, and Claude integration.</p>
+      </div>
+      <div class="p-6 bg-dark-800 rounded-2xl border border-gray-800">
+        <div class="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+        </div>
+        <h3 class="text-lg font-semibold mb-2">Crypto Trading</h3>
+        <p class="text-gray-400 text-sm">Swap tokens, check balances, and track prices across 6+ chains.</p>
+      </div>
+      <div class="p-6 bg-dark-800 rounded-2xl border border-gray-800">
+        <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        </div>
+        <h3 class="text-lg font-semibold mb-2">NFT Minting</h3>
+        <p class="text-gray-400 text-sm">Mint AI-generated NFTs directly from chat conversations.</p>
+      </div>
+      <div class="p-6 bg-dark-800 rounded-2xl border border-gray-800">
+        <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L8 18H6a2 2 0 01-2-2v-6a2 2 0 012-2h2"></path></svg>
+        </div>
+        <h3 class="text-lg font-semibold mb-2">Farcaster Frames</h3>
+        <p class="text-gray-400 text-sm">Interactive mini-apps for Warpcast feed integration.</p>
+      </div>
+    </section>
+    
+    <!-- Stats -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-20">
+      <div class="text-center p-6 bg-dark-800 rounded-xl">
+        <div class="text-3xl font-bold text-amber-400 mb-1">6+</div>
+        <div class="text-gray-400 text-sm">Chains Supported</div>
+      </div>
+      <div class="text-center p-6 bg-dark-800 rounded-xl">
+        <div class="text-3xl font-bold text-amber-400 mb-1">5+</div>
+        <div class="text-gray-400 text-sm">AI Models</div>
+      </div>
+      <div class="text-center p-6 bg-dark-800 rounded-xl">
+        <div class="text-3xl font-bold text-amber-400 mb-1">3</div>
+        <div class="text-gray-400 text-sm">Farcaster Frames</div>
+      </div>
+      <div class="text-center p-6 bg-dark-800 rounded-xl">
+        <div class="text-3xl font-bold text-amber-400 mb-1">&lt;100ms</div>
+        <div class="text-gray-400 text-sm">API Response</div>
+      </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 pt-8 mt-20">
+      <div class="flex flex-wrap justify-between items-center gap-4">
+        <div class="text-gray-400 text-sm">© 2025 Ouwibo Agent. Built on Cloudflare Workers.</div>
+        <div class="flex gap-6">
+          <a href="https://github.com/ouwibo/Agent" class="text-gray-400 hover:text-white transition">GitHub</a>
+          <a href="#/docs" class="text-gray-400 hover:text-white transition">Docs</a>
+          <a href="#/api" class="text-gray-400 hover:text-white transition">API</a>
+        </div>
+      </div>
+    </footer>
+  </div>
 </body>
 </html>`;
-}
+  return c.html(html);
+});
 
-// ============== CHAT HANDLER ==============
-async function handleChat(request: Request, env: Env): Promise<Response> {
-  const body = await request.json().catch(() => ({})) as { message?: string; model?: string };
-  const message = trim(body.message);
-  if (!message) return json({ error: "Message required" }, 400);
+// ============== API ROUTES ==============
 
-  const model = body.model && ALLOWED_MODELS.has(body.model as typeof modelCatalog[number]["id"]) ? body.model : env.DEFAULT_MODEL || defaultModel;
+// Health check
+app.get('/health', (c) => c.json({ 
+  status: 'ok', 
+  agent: 'Ouwibo Agent', 
+  version: '2.0.0',
+  model: c.env.DEFAULT_MODEL || 'qwen3.5-plus',
+  features: ['chat', 'crypto', 'wallet', 'frames', 'nft']
+}));
 
-  const upstream = await callDashScope(env, model, [{ role: "user", content: message }], false);
+// Chat API
+app.options('/api/chat', chatOptions);
+app.post('/api/chat', handleChat);
 
-  if (!upstream.ok) {
-    const data = await upstream.json().catch(() => ({}));
-    return json({ error: humanizeError(upstream.status), details: data }, upstream.status);
+// Crypto API
+app.options('/api/crypto/*', cryptoOptions);
+app.get('/api/crypto/balance', handleBalance);
+app.post('/api/crypto/swap', handleSwap);
+app.get('/api/crypto/prices', handlePrice);
+app.get('/api/crypto/chains', async (c) => c.json({ ok: true, chains: await getSupportedChains() }));
+app.get('/api/crypto/tokens', (c) => c.json({ ok: true, tokens: TOKENS }));
+
+// Wallet API
+app.options('/api/wallet/*', walletOptions);
+app.post('/api/wallet/connect', handleWalletConnect);
+app.get('/api/wallet/status', handleWalletStatus);
+app.post('/api/wallet/disconnect', handleWalletDisconnect);
+
+// Farcaster Frames API
+app.options('/api/farcaster/*', frameOptions);
+app.post('/api/farcaster/frames/chat', handleChatFrame);
+app.post('/api/farcaster/frames/crypto', handleCryptoFrame);
+app.post('/api/farcaster/frames/nft', handleNFTFrame);
+
+// Frame images
+app.get('/api/frame/image', async (c) => {
+  const text = c.req.query('text') || 'Hello!';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">
+    <rect width="100%" height="100%" fill="#0a0a0f"/>
+    <text x="50%" y="50%" fill="white" font-family="Arial" font-size="24" text-anchor="middle">${text}</text>
+    <text x="50%" y="90%" fill="#888" font-family="Arial" font-size="12" text-anchor="middle">Ouwibo Agent</text>
+  </svg>`;
+  return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml' } });
+});
+
+app.get('/api/frame/crypto-image', async (c) => {
+  const prices = await getTokenPrices(['ethereum', 'bitcoin', 'usd-coin']);
+  const eth = prices.ethereum?.usd || 0;
+  const btc = prices.bitcoin?.usd || 0;
+  
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">
+    <rect width="100%" height="100%" fill="#0a0a0f"/>
+    <text x="50%" y="30%" fill="#fbbf24" font-family="Arial" font-size="32" text-anchor="middle">Crypto Prices</text>
+    <text x="50%" y="50%" fill="white" font-family="Arial" font-size="24" text-anchor="middle">ETH: $${eth.toLocaleString()}</text>
+    <text x="50%" y="70%" fill="white" font-family="Arial" font-size="24" text-anchor="middle">BTC: $${btc.toLocaleString()}</text>
+    <text x="50%" y="95%" fill="#888" font-family="Arial" font-size="12" text-anchor="middle">Ouwibo Agent</text>
+  </svg>`;
+  return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml' } });
+});
+
+app.get('/api/frame/nft-image', (c) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">
+    <rect width="100%" height="100%" fill="#0a0a0f"/>
+    <defs>
+      <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#fbbf24"/>
+        <stop offset="100%" style="stop-color:#f59e0b"/>
+      </linearGradient>
+    </defs>
+    <rect x="150" y="50" width="300" height="300" fill="url(#g)" rx="20"/>
+    <text x="50%" y="40%" fill="white" font-family="Arial" font-size="48" text-anchor="middle">🎨</text>
+    <text x="50%" y="95%" fill="#888" font-family="Arial" font-size="12" text-anchor="middle">Ouwibo NFT - Mint Now!</text>
+  </svg>`;
+  return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml' } });
+});
+
+// Models API
+app.get('/api/models', (c) => c.json({
+  models: [
+    { id: 'qwen3.5-turbo', name: 'Qwen 3.5 Turbo', description: 'Fast responses' },
+    { id: 'qwen3.5-plus', name: 'Qwen 3.5 Plus', description: 'Balanced performance' },
+    { id: 'qwen3.5-max', name: 'Qwen 3.5 Max', description: 'Best quality' },
+  ],
+  default: c.env.DEFAULT_MODEL || 'qwen3.5-plus'
+}));
+
+// Docs API
+app.get('/api/docs', (c) => c.json({
+  version: '2.0.0',
+  endpoints: {
+    chat: { method: 'POST', path: '/api/chat', body: { message: 'string', model: 'string?' } },
+    balance: { method: 'GET', path: '/api/crypto/balance', params: { address: 'string', chain: 'string?' } },
+    swap: { method: 'POST', path: '/api/crypto/swap', body: { fromToken: 'string', toToken: 'string', amount: 'string', fromAddress: 'string' } },
+    prices: { method: 'GET', path: '/api/crypto/prices', params: { tokens: 'string?' } },
+    walletConnect: { method: 'POST', path: '/api/wallet/connect', body: { address: 'string', signature: 'string', message: 'string' } },
+    frames: { method: 'POST', path: '/api/farcaster/frames/{chat|crypto|nft}' },
   }
+}));
 
-  const data = await upstream.json() as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown };
-  const answer = data.choices?.[0]?.message?.content || "";
+// Favicon
+app.get('/favicon.svg', (c) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="16" fill="#0a0a0f"/>
+    <circle cx="32" cy="32" r="20" fill="#fbbf24"/>
+    <text x="32" y="42" fill="#0a0a0f" font-family="Arial" font-size="24" text-anchor="middle" font-weight="bold">O</text>
+  </svg>`;
+  return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml' } });
+});
 
-  return json({ ok: true, model, answer, usage: data.usage || null });
-}
+// Robots.txt
+app.get('/robots.txt', (c) => c.text('User-agent: *\nAllow: /'));
 
-// ============== ROUTER ==============
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
+// Sitemap
+app.get('/sitemap.xml', (c) => c.text(`<?xml version="1.0"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${c.req.url.split('?')[0]}</loc></url>
+</urlset>`));
 
-    const url = new URL(request.url);
-    const base = url.origin;
+// 404 handler
+app.notFound((c) => c.json({ error: 'Not found' }, 404));
 
-    // Redirect root to agent-ui for frontend
-    if (url.pathname === "/") {
-      return Response.redirect("https://agent-ui.ouwibo.workers.dev", 302);
-    }
-    if (url.pathname === "/favicon.svg") return new Response(favicon(), { headers: cors({ "Content-Type": "image/svg+xml" }) });
-    if (url.pathname === "/robots.txt") return text("User-agent: *\nAllow: /\nSitemap: " + base + "/sitemap.xml");
-    if (url.pathname === "/sitemap.xml") return text('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' + base + '/</loc></url></urlset>', "application/xml");
-
-    // API routes
-    if (url.pathname === "/health") return json({ status: "ok", agent: "Ouwibo Agent", version: "3.0.0", model: env.DEFAULT_MODEL || defaultModel });
-    if (url.pathname === "/api/models") return json({ models: modelCatalog, default: defaultModel });
-    if (url.pathname === "/api/chat" && request.method === "POST") return handleChat(request, env);
-
-    return json({ error: "Not found" }, 404);
-  },
-};
+export default app;

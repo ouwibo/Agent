@@ -5,7 +5,17 @@ account_id = "d4788f1fc05bad3323aa34314e35d891"
 
 [vars]
 DEFAULT_MODEL = "qwen3.5-plus"
+FRAME_BASE_URL = "https://agent.ouwibo.workers.dev"
 
 [observability]
 enabled = true
 head_sampling_rate = 1
+
+# Secrets (set with: wrangler secret put <NAME>)
+# DASHSCOPE_API_KEY
+# ALCHEMY_API_KEY
+# MORALIS_API_KEY
+# NEYNAR_API_KEY
+# PRIVY_APP_ID
+# PRIVY_API_SECRET
+# JWT_SECRET
