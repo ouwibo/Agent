@@ -46,3 +46,7 @@ coverage/
 *.tsbuildinfo
 .eslintcache
 .cache
+
+.dev.vars*
+!.dev.vars.example
+!.env.example

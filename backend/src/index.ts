@@ -38,8 +38,8 @@ app.get('/', (c) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ouwibo Agent - Web3 AI Platform</title>
-  <meta name="description" content="Advanced Web3 AI Platform with Chat, Crypto Trading, NFT Minting, and Farcaster Frames">
+  <title>Ouwibo AI - Web3 AI Agent</title>
+  <meta name="description" content="Advanced Web3 AI Agent with Chat, Crypto Trading, and Uniswap Integration">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -47,7 +47,7 @@ app.get('/', (c) => {
         extend: {
           colors: {
             dark: { 900: '#0a0a0f', 800: '#111118', 700: '#1a1a24' },
-            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+            teal: { 400: '#2dd4bf', 500: '#0d9488', 600: '#0f766e' }
           }
         }
       }
@@ -59,24 +59,24 @@ app.get('/', (c) => {
     <!-- Header -->
     <header class="flex justify-between items-center mb-16">
       <div class="flex items-center gap-3">
-        <div class="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center text-black font-bold text-xl">O</div>
+        <div class="w-12 h-12 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center text-black font-bold text-xl">O</div>
         <div>
-          <h1 class="text-xl font-bold">Ouwibo Agent</h1>
-          <p class="text-gray-400 text-sm">Web3 AI Platform</p>
+          <h1 class="text-xl font-bold">Ouwibo AI</h1>
+          <p class="text-gray-400 text-sm">Web3 AI Agent</p>
         </div>
       </div>
       <div class="flex items-center gap-4">
         <span class="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded-full">● Online</span>
-        <a href="#/chat" class="px-6 py-2 bg-amber-500 hover:bg-amber-600 rounded-lg font-medium transition">Launch App</a>
+        <a href="#/chat" class="px-6 py-2 bg-teal-500 hover:bg-teal-600 rounded-lg font-medium transition">Try Now</a>
       </div>
     </header>
     
     <!-- Hero -->
     <section class="text-center py-20">
-      <h2 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">Web3 AI Platform</h2>
-      <p class="text-xl text-gray-400 max-w-2xl mx-auto mb-8">Chat with AI, trade crypto, mint NFTs, and interact with Farcaster Frames - all in one powerful platform.</p>
+      <h2 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">Web3 AI Agent</h2>
+      <p class="text-xl text-gray-400 max-w-2xl mx-auto mb-8">Chat with AI, trade crypto on Uniswap, analyze liquidity, and execute swaps — all in one powerful agent.</p>
       <div class="flex flex-wrap justify-center gap-4">
-        <a href="#/chat" class="px-8 py-4 bg-amber-500 hover:bg-amber-600 rounded-xl font-medium transition flex items-center gap-2">
+        <a href="#/chat" class="px-8 py-4 bg-teal-500 hover:bg-teal-600 rounded-xl font-medium transition flex items-center gap-2">
           <span>Start Chatting</span>
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
         </a>
@@ -87,51 +87,51 @@ app.get('/', (c) => {
     <!-- Features -->
     <section class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
       <div class="p-6 bg-dark-800 rounded-2xl border border-gray-800">
-        <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4">
-          <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+        <div class="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
         </div>
         <h3 class="text-lg font-semibold mb-2">AI Chat</h3>
         <p class="text-gray-400 text-sm">Multi-model AI chat with Qwen, GPT-4, and Claude integration.</p>
       </div>
       <div class="p-6 bg-dark-800 rounded-2xl border border-gray-800">
-        <div class="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center mb-4">
-          <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+        <div class="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
         </div>
-        <h3 class="text-lg font-semibold mb-2">Crypto Trading</h3>
-        <p class="text-gray-400 text-sm">Swap tokens, check balances, and track prices across 6+ chains.</p>
+        <h3 class="text-lg font-semibold mb-2">Uniswap Integration</h3>
+        <p class="text-gray-400 text-sm">Swap tokens, analyze liquidity positions, and execute trades on Uniswap v3/v4.</p>
       </div>
       <div class="p-6 bg-dark-800 rounded-2xl border border-gray-800">
-        <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4">
-          <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        <div class="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
         </div>
-        <h3 class="text-lg font-semibold mb-2">NFT Minting</h3>
-        <p class="text-gray-400 text-sm">Mint AI-generated NFTs directly from chat conversations.</p>
+        <h3 class="text-lg font-semibold mb-2">Crypto Analysis</h3>
+        <p class="text-gray-400 text-sm">Real-time price data, on-chain analytics, and portfolio insights.</p>
       </div>
       <div class="p-6 bg-dark-800 rounded-2xl border border-gray-800">
-        <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mb-4">
-          <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L8 18H6a2 2 0 01-2-2v-6a2 2 0 012-2h2"></path></svg>
+        <div class="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L8 18H6a2 2 0 01-2-2v-6a2 2 0 012-2h2"></path></svg>
         </div>
-        <h3 class="text-lg font-semibold mb-2">Farcaster Frames</h3>
-        <p class="text-gray-400 text-sm">Interactive mini-apps for Warpcast feed integration.</p>
+        <h3 class="text-lg font-semibold mb-2">Wallet Management</h3>
+        <p class="text-gray-400 text-sm">Connect MetaMask, WalletConnect, and manage multiple chains.</p>
       </div>
     </section>
     
     <!-- Stats -->
     <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-20">
       <div class="text-center p-6 bg-dark-800 rounded-xl">
-        <div class="text-3xl font-bold text-amber-400 mb-1">6+</div>
+        <div class="text-3xl font-bold text-teal-400 mb-1">6+</div>
         <div class="text-gray-400 text-sm">Chains Supported</div>
       </div>
       <div class="text-center p-6 bg-dark-800 rounded-xl">
-        <div class="text-3xl font-bold text-amber-400 mb-1">5+</div>
+        <div class="text-3xl font-bold text-teal-400 mb-1">5+</div>
         <div class="text-gray-400 text-sm">AI Models</div>
       </div>
       <div class="text-center p-6 bg-dark-800 rounded-xl">
-        <div class="text-3xl font-bold text-amber-400 mb-1">3</div>
-        <div class="text-gray-400 text-sm">Farcaster Frames</div>
+        <div class="text-3xl font-bold text-teal-400 mb-1">Uniswap</div>
+        <div class="text-gray-400 text-sm">v3 & v4 Ready</div>
       </div>
       <div class="text-center p-6 bg-dark-800 rounded-xl">
-        <div class="text-3xl font-bold text-amber-400 mb-1">&lt;100ms</div>
+        <div class="text-3xl font-bold text-teal-400 mb-1">&lt;100ms</div>
         <div class="text-gray-400 text-sm">API Response</div>
       </div>
     </section>
@@ -139,7 +139,7 @@ app.get('/', (c) => {
     <!-- Footer -->
     <footer class="border-t border-gray-800 pt-8 mt-20">
       <div class="flex flex-wrap justify-between items-center gap-4">
-        <div class="text-gray-400 text-sm">© 2025 Ouwibo Agent. Built on Cloudflare Workers.</div>
+        <div class="text-gray-400 text-sm">© 2026 Ouwibo AI. Built on Cloudflare Workers.</div>
         <div class="flex gap-6">
           <a href="https://github.com/ouwibo/Agent" class="text-gray-400 hover:text-white transition">GitHub</a>
           <a href="#/docs" class="text-gray-400 hover:text-white transition">Docs</a>
