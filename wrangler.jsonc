@@ -1,12 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "agent",
+  "main": "backend/src/index.ts",
   "compatibility_date": "2026-04-30",
   "observability": {
     "enabled": true
   },
   "assets": {
-    "directory": "frontend"
+    "directory": "frontend/dist"
   },
   "compatibility_flags": [
     "nodejs_compat"

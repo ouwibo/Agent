@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   Bot,
+  Check,
   Coins,
   Copy,
   ExternalLink,
@@ -20,9 +21,9 @@ import {
   Sparkles,
   Star,
   TrendingUp,
+  User,
   Wallet,
   X,
-  Check,
   Zap,
 } from 'lucide-react'
 import './index.css'
