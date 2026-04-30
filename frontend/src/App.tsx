@@ -1,275 +1,555 @@
-import { useState, useEffect, useRef } from 'react'
-import { Send, Loader2, Bot, User, Sparkles, Zap, Shield, Menu, X, ExternalLink, Check, Copy } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ArrowRight,
+  Bot,
+  Coins,
+  Copy,
+  ExternalLink,
+  FileText,
+  Flame,
+  Globe,
+  Layers3,
+  Loader2,
+  MessageSquare,
+  Menu,
+  Mic,
+  Palette,
+  Rocket,
+  Send,
+  Shield,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Wallet,
+  X,
+  Check,
+  Zap,
+} from 'lucide-react'
 import './index.css'
 
-const API_URL = 'https://agent.ouwibo.workers.dev'
-
-interface Message {
+type Message = {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
 }
 
-export default function App() {
-  const [messages, setMessages] = useState<Message[]>([])
+type Mode = 'chat' | 'frames' | 'wallet' | 'market' | 'docs'
+
+type QuickAction = {
+  label: string
+  prompt?: string
+  href?: string
+  icon: typeof Sparkles
+}
+
+const API_URL = 'https://agent.ouwibo.workers.dev'
+
+const starterMessages: Message[] = [
+  {
+    id: 'welcome',
+    role: 'assistant',
+    content:
+      'Welcome to Ouwibo Agent. Choose a mode, tap a quick action, or start chatting for strategy, crypto, Farcaster, and onchain workflows.',
+    timestamp: new Date(),
+  },
+]
+
+const quickActions: QuickAction[] = [
+  { label: 'Build a mini app', prompt: 'Create a Farcaster-style mini app UI with smooth mobile interactions.', icon: Rocket },
+  { label: 'Market scan', prompt: 'Give me a concise crypto market scan for ETH, SOL, and BASE.', icon: TrendingUp },
+  { label: 'Onchain plan', prompt: 'Outline a safe onchain workflow for a user tip jar and treasury.', icon: Wallet },
+  { label: 'Frames idea', prompt: 'Design 3 Farcaster Frames for chat, crypto, and NFT minting.', icon: Layers3 },
+  { label: 'Prompt polish', prompt: 'Rewrite my prompt into a clean product spec with sections and priorities.', icon: FileText },
+  { label: 'Launch copy', prompt: 'Write short launch copy for a premium AI agent website.', icon: Flame },
+]
+
+const modes: { id: Mode; label: string; icon: typeof MessageSquare }[] = [
+  { id: 'chat', label: 'Chat', icon: MessageSquare },
+  { id: 'frames', label: 'Frames', icon: Layers3 },
+  { id: 'wallet', label: 'Wallet', icon: Wallet },
+  { id: 'market', label: 'Market', icon: TrendingUp },
+  { id: 'docs', label: 'Docs', icon: FileText },
+]
+
+const capabilities = [
+  'Mobile-first layout',
+  'Smooth animations',
+  'Quick actions',
+  'Farcaster-ready',
+  'Onchain workflow',
+  'Edge API',
+]
+
+const shortcuts = [
+  'Summarize BTC in 1 line',
+  'Draft a Farcaster post',
+  'Plan a token launch',
+  'Generate product copy',
+]
+
+function formatTime(date: Date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function App() {
+  const [messages, setMessages] = useState<Message[]>(starterMessages)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [activeMode, setActiveMode] = useState<Mode>('chat')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const scrollToBottom = () => {
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  }, [messages, loading])
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    document.title = 'Ouwibo Agent | Mini App'
+  }, [])
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || loading) return
+  const statusText = useMemo(() => {
+    if (loading) return 'Thinking'
+    return 'Ready'
+  }, [loading])
 
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input, timestamp: new Date() }
-    setMessages(prev => [...prev, userMsg])
+  async function sendMessage(prompt: string) {
+    const content = prompt.trim()
+    if (!content || loading) return
+
+    const userMessage: Message = {
+      id: `${Date.now()}-user`,
+      role: 'user',
+      content,
+      timestamp: new Date(),
+    }
+
+    setMessages((prev) => [...prev, userMessage])
     setInput('')
     setLoading(true)
 
     try {
-      const res = await fetch(`${API_URL}/api/chat`, {
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input })
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ message: content }),
       })
-      const data = await res.json()
-      const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: data.answer || data.reply || 'No response', timestamp: new Date() }
-      setMessages(prev => [...prev, aiMsg])
-    } catch (err: any) {
-      const errMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: 'Error: ' + (err.message || 'Failed to get response'), timestamp: new Date() }
-      setMessages(prev => [...prev, errMsg])
+
+      const data = await response.json()
+      const reply = data.answer || data.reply || 'No response available.'
+
+      const aiMessage: Message = {
+        id: `${Date.now()}-assistant`,
+        role: 'assistant',
+        content: reply,
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev, aiMessage])
+      setActiveMode('chat')
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-error`,
+          role: 'assistant',
+          content: 'Connection error. Please try again.',
+          timestamp: new Date(),
+        },
+      ])
     } finally {
       setLoading(false)
     }
   }
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(id)
-    setTimeout(() => setCopied(null), 2000)
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    void sendMessage(input)
   }
 
-  const features = [
-    { icon: Zap, title: 'Lightning Fast', desc: 'Sub-second response times powered by edge computing' },
-    { icon: Shield, title: 'Secure & Private', desc: 'Your conversations stay private and encrypted' },
-    { icon: Sparkles, title: 'Smart AI', desc: 'Advanced reasoning with multi-model support' },
-  ]
+  function copyText(text: string, id: string) {
+    navigator.clipboard.writeText(text)
+    setCopied(id)
+    window.setTimeout(() => setCopied(null), 1400)
+  }
+
+  const modeTitle =
+    {
+      chat: 'AI Chat',
+      frames: 'Farcaster Frames',
+      wallet: 'Wallet Ops',
+      market: 'Market Pulse',
+      docs: 'Agent Docs',
+    }[activeMode] || 'AI Chat'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      {/* Animated background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+    <div className="min-h-screen bg-[#060816] text-white">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-[-10rem] top-[-8rem] h-80 w-80 rounded-full bg-cyan-500/18 blur-3xl animate-pulse-slow" />
+        <div className="absolute right-[-8rem] top-[12rem] h-72 w-72 rounded-full bg-fuchsia-500/16 blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-[-8rem] left-[30%] h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl animate-pulse-slow" />
       </div>
 
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-slate-900/50 border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center animate-spin-slow">
-                  <Bot className="w-6 h-6 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Ouwibo Agent</h1>
-                <p className="text-xs text-slate-400">AI Assistant</p>
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#060816]/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/8 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.9)]">
+              <Bot className="h-5 w-5 text-cyan-300" />
+              <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(74,222,128,0.9)]" />
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.35em] text-white/35">Ouwibo Agent</div>
+              <div className="flex items-center gap-2 text-sm font-medium text-white/85">
+                <span>{modeTitle}</span>
+                <span className="rounded-full border border-white/10 bg-white/6 px-2 py-0.5 text-[10px] text-white/50">{statusText}</span>
               </div>
             </div>
-            <div className="hidden md:flex items-center gap-6">
-              <a href="#features" className="text-slate-300 hover:text-white transition-colors">Features</a>
-              <a href="#chat" className="text-slate-300 hover:text-white transition-colors">Chat</a>
-              <a href="https://github.com/ouwibo/Agent" target="_blank" rel="noopener" className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors">
-                <GithubIcon className="w-4 h-4" /> GitHub
-              </a>
-            </div>
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-slate-300">
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
           </div>
+
+          <div className="hidden items-center gap-2 md:flex">
+            {modes.map((mode) => {
+              const Icon = mode.icon
+              const active = mode.id === activeMode
+              return (
+                <button
+                  key={mode.id}
+                  onClick={() => setActiveMode(mode.id)}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition-all ${
+                    active
+                      ? 'border-cyan-400/30 bg-cyan-400/12 text-cyan-100 shadow-[0_12px_40px_-16px_rgba(34,211,238,0.75)]'
+                      : 'border-white/10 bg-white/5 text-white/65 hover:bg-white/8 hover:text-white'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {mode.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <button
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 md:hidden"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-slate-900/95 border-b border-slate-800 px-4 py-4 space-y-3">
-            <a href="#features" className="block text-slate-300 hover:text-white">Features</a>
-            <a href="#chat" className="block text-slate-300 hover:text-white">Chat</a>
-            <a href="https://github.com/ouwibo/Agent" target="_blank" rel="noopener" className="flex items-center gap-2 text-slate-300 hover:text-white">
-              <GithubIcon className="w-4 h-4" /> GitHub
-            </a>
-          </div>
-        )}
-      </nav>
 
-      <main className="relative pt-24">
-        {/* Hero Section */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center animate-fadeIn">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-sm mb-6 animate-bounce-slow">
-              <Sparkles className="w-4 h-4" />
-              Powered by Advanced AI
-            </div>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6">
-              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Your AI Assistant</span>
-            </h1>
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10">Experience the next generation of AI-powered conversations. Fast, intelligent, and always available.</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="#chat" className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold text-white hover:shadow-lg hover:shadow-blue-500/25 transition-all hover:-translate-y-1">
-                Start Chatting <Send className="inline ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </a>
-              <a href="https://github.com/ouwibo/Agent" target="_blank" rel="noopener" className="px-8 py-4 bg-slate-800 border border-slate-700 rounded-xl font-semibold text-white hover:bg-slate-700 transition-all hover:-translate-y-1">
-                <GithubIcon className="inline mr-2 w-4 h-4" /> View Source
-              </a>
+        {menuOpen ? (
+          <div className="border-t border-white/10 px-4 py-3 md:hidden">
+            <div className="grid grid-cols-2 gap-2">
+              {modes.map((mode) => {
+                const Icon = mode.icon
+                const active = mode.id === activeMode
+                return (
+                  <button
+                    key={mode.id}
+                    onClick={() => {
+                      setActiveMode(mode.id)
+                      setMenuOpen(false)
+                    }}
+                    className={`flex items-center gap-2 rounded-2xl border px-3 py-3 text-sm transition ${
+                      active ? 'border-cyan-400/30 bg-cyan-400/12 text-cyan-100' : 'border-white/10 bg-white/5 text-white/70'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {mode.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
-        </section>
+        ) : null}
+      </header>
 
-        {/* Features Section */}
-        <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="grid md:grid-cols-3 gap-8">
-            {features.map((f, i) => (
-              <div key={i} className="group p-8 bg-slate-800/50 border border-slate-700/50 rounded-2xl hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all hover:-translate-y-2 animate-fadeIn" style={{ animationDelay: `${i * 0.2}s` }}>
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <f.icon className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">{f.title}</h3>
-                <p className="text-slate-400">{f.desc}</p>
+      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 pb-28 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8 lg:pb-10">
+        <section className="space-y-6">
+          <div className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_30px_100px_-45px_rgba(0,0,0,0.95)] backdrop-blur-xl sm:p-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-cyan-100">
+                <Sparkles className="h-3.5 w-3.5" />
+                Farcaster-like mini app
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-white/60">
+                <Shield className="h-3.5 w-3.5" />
+                Smooth mobile UX
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+              <div>
+                <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
+                  Make Ouwibo feel like a polished mini app.
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-white/60 sm:text-base">
+                  Dense button set, soft motion, mobile-first spacing, and a clear action surface for chat, crypto, frames, and onchain workflows.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+                {[
+                  { label: 'Smooth', value: 'UI' },
+                  { label: 'Modes', value: '5' },
+                  { label: 'Actions', value: '12+' },
+                  { label: 'Mobile', value: 'First' },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-center">
+                    <div className="text-xl font-bold text-white">{item.value}</div>
+                    <div className="mt-1 text-[11px] uppercase tracking-[0.24em] text-white/45">{item.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {quickActions.map((action) => {
+                const Icon = action.icon
+                return (
+                  <button
+                    key={action.label}
+                    onClick={() => action.prompt && void sendMessage(action.prompt)}
+                    className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left transition-all hover:-translate-y-0.5 hover:border-cyan-400/25 hover:bg-white/8 hover:shadow-[0_16px_60px_-24px_rgba(34,211,238,0.35)]"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400/20 to-fuchsia-500/20 text-cyan-100">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-white">{action.label}</div>
+                      <div className="mt-1 text-xs text-white/48">Tap to prefill</div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            {capabilities.map((item) => (
+              <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-white/70 shadow-[0_18px_50px_-30px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+                {item}
               </div>
             ))}
           </div>
-        </section>
 
-        {/* Chat Section */}
-        <section id="chat" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-3xl overflow-hidden shadow-2xl animate-fadeIn">
-            <div className="px-6 py-4 border-b border-slate-700/50 bg-slate-800/80 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center animate-pulse">
-                  <Bot className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white">Ouwibo AI</h3>
-                  <p className="text-xs text-green-400 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> Online
-                  </p>
-                </div>
+          <div className="rounded-[28px] border border-white/10 bg-[#0a1022]/90 shadow-[0_35px_120px_-50px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-5">
+              <div>
+                <div className="text-xs uppercase tracking-[0.28em] text-white/35">Chat surface</div>
+                <h2 className="mt-1 text-lg font-semibold text-white">Interactive AI panel</h2>
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs">v2.0</span>
+                <button className="inline-flex h-10 items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 text-xs text-white/70 transition hover:bg-white/10">
+                  <Mic className="mr-2 h-4 w-4" /> Voice
+                </button>
+                <button className="inline-flex h-10 items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 text-xs text-white/70 transition hover:bg-white/10">
+                  <Globe className="mr-2 h-4 w-4" /> Web
+                </button>
               </div>
             </div>
 
-            <div className="h-[500px] overflow-y-auto p-6 space-y-4">
-              {messages.length === 0 && !loading && (
-                <div className="h-full flex flex-col items-center justify-center text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 animate-bounce-slow">
-                    <Bot className="w-10 h-10 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Start a Conversation</h3>
-                  <p className="text-slate-400 max-w-md">Ask me anything! I'm powered by advanced AI models and ready to help.</p>
-                </div>
-              )}
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === 'user' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'bg-slate-700 border border-slate-600 text-white'}`}>
-                    <div className="flex items-start gap-2">
-                      {msg.role === 'assistant' && <Bot className="w-5 h-5 mt-1 text-blue-400" />}
-                      {msg.role === 'user' && <User className="w-5 h-5 mt-1" />}
-                      <div>
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs text-slate-400">{msg.timestamp.toLocaleTimeString()}</span>
-                          {msg.role === 'assistant' && (
-                            <button onClick={() => copyToClipboard(msg.content, msg.id)} className="text-slate-400 hover:text-white transition-colors">
-                              {copied === msg.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                            </button>
-                          )}
+            <div className="max-h-[58vh] min-h-[430px] space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
+              {messages.map((message) => {
+                const user = message.role === 'user'
+                return (
+                  <div key={message.id} className={`flex ${user ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[88%] rounded-[24px] border px-4 py-3 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.85)] sm:max-w-[82%] ${user ? 'border-cyan-400/20 bg-gradient-to-br from-cyan-400/20 to-fuchsia-500/10 text-white' : 'border-white/10 bg-white/6 text-white/90'}`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl ${user ? 'bg-white/10' : 'bg-gradient-to-br from-cyan-400/20 to-fuchsia-500/20'}`}>
+                          {user ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4 text-cyan-100" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="whitespace-pre-wrap text-[15px] leading-7 text-white/92">{message.content}</div>
+                          <div className="mt-3 flex items-center gap-2 text-[11px] text-white/40">
+                            <span>{formatTime(message.timestamp)}</span>
+                            {!user ? (
+                              <button
+                                onClick={() => copyText(message.content, message.id)}
+                                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 transition hover:bg-white/10"
+                              >
+                                {copied === message.id ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                                {copied === message.id ? 'Copied' : 'Copy'}
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {loading && (
+                )
+              })}
+
+              {loading ? (
                 <div className="flex justify-start">
-                  <div className="bg-slate-700 border border-slate-600 rounded-2xl px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Bot className="w-5 h-5 text-blue-400" />
-                      <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
-                      <span className="text-slate-400">Thinking...</span>
-                    </div>
+                  <div className="inline-flex items-center gap-3 rounded-[22px] border border-white/10 bg-white/6 px-4 py-3 text-white/70">
+                    <Loader2 className="h-4 w-4 animate-spin text-cyan-300" />
+                    Thinking...
                   </div>
                 </div>
-              )}
+              ) : null}
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSend} className="px-6 py-4 border-t border-slate-700/50 bg-slate-800/80">
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your message..."
-                  disabled={loading}
-                  className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 transition-all"
-                />
-                <button type="submit" disabled={loading || !input.trim()} className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl text-white font-semibold hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5">
-                  <Send className="w-5 h-5" />
+            <form onSubmit={onSubmit} className="border-t border-white/10 p-4 sm:p-5">
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                <div className="flex flex-wrap gap-2">
+                  {shortcuts.map((shortcut) => (
+                    <button
+                      key={shortcut}
+                      type="button"
+                      onClick={() => setInput(shortcut)}
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 transition hover:bg-white/10"
+                    >
+                      {shortcut}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading || !input.trim()}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-cyan-400 to-fuchsia-500 px-5 font-semibold text-[#040816] shadow-[0_20px_60px_-24px_rgba(34,211,238,0.7)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Send className="mr-2 h-4 w-4" /> Send
                 </button>
               </div>
+              <div className="mt-3 flex items-center justify-between text-[11px] text-white/35">
+                <span>Press Enter to send</span>
+                <span>Mobile-friendly controls</span>
+              </div>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    void sendMessage(input)
+                  }
+                }}
+                placeholder="Ask for a Farcaster post, crypto scan, mobile UI, or onchain plan"
+                className="mt-3 min-h-[92px] w-full resize-none rounded-[22px] border border-white/10 bg-white/5 px-4 py-3 text-[15px] leading-7 text-white outline-none transition placeholder:text-white/30 focus:border-cyan-400/30 focus:bg-white/8"
+              />
             </form>
           </div>
         </section>
 
-        {/* Footer */}
-        <footer className="border-t border-slate-800 bg-slate-900/50 backdrop-blur-xl">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                  <Bot className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-white">Ouwibo Agent</h3>
-                  <p className="text-sm text-slate-400">AI Assistant Platform</p>
-                </div>
+        <aside className="space-y-6 lg:sticky lg:top-[88px] lg:h-[calc(100vh-112px)] lg:self-start lg:overflow-y-auto">
+          <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[0.28em] text-white/35">Mode deck</div>
+                <div className="mt-1 text-lg font-semibold text-white">Mini app buttons</div>
               </div>
-              <div className="flex items-center gap-6">
-                <a href="https://github.com/ouwibo/Agent" target="_blank" rel="noopener" className="text-slate-400 hover:text-white transition-colors">
-                  <GithubIcon className="w-5 h-5" />
-                </a>
-                <a href="https://agent.ouwibo.workers.dev" target="_blank" rel="noopener" className="text-slate-400 hover:text-white transition-colors">
-                  <ExternalLink className="w-5 h-5" />
-                </a>
-              </div>
+              <Palette className="h-5 w-5 text-cyan-300" />
             </div>
-            <div className="mt-8 pt-8 border-t border-slate-800 text-center text-sm text-slate-500">
-              © {new Date().getFullYear()} Ouwibo Agent. Built with ❤️
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              {modes.map((mode) => {
+                const Icon = mode.icon
+                const active = mode.id === activeMode
+                return (
+                  <button
+                    key={mode.id}
+                    onClick={() => setActiveMode(mode.id)}
+                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition-all ${
+                      active ? 'border-cyan-400/25 bg-cyan-400/12 text-white shadow-[0_18px_50px_-26px_rgba(34,211,238,0.55)]' : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/8'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/6">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-semibold">{mode.label}</span>
+                        <span className="block text-xs text-white/40">Open {mode.label.toLowerCase()} tools</span>
+                      </span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-white/35" />
+                  </button>
+                )
+              })}
             </div>
           </div>
-        </footer>
+
+          <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[0.28em] text-white/35">Actions</div>
+                <div className="mt-1 text-lg font-semibold text-white">Ready buttons</div>
+              </div>
+              <Star className="h-5 w-5 text-fuchsia-300" />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {[
+                { label: 'Open GitHub', href: 'https://github.com/ouwibo/Agent', icon: ExternalLink },
+                { label: 'Launch App', href: 'https://agent.ouwibo.workers.dev', icon: Rocket },
+                { label: 'Frames plan', prompt: 'Draft a Farcaster Frames rollout plan for this product.', icon: Layers3 },
+                { label: 'Onchain flow', prompt: 'Design an onchain treasury and tipping flow.', icon: Coins },
+              ].map((item) => {
+                const Icon = item.icon
+                if (item.href) {
+                  return (
+                    <a
+                      key={item.label}
+                      href={item.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-medium text-white/75 transition hover:-translate-y-0.5 hover:bg-white/8"
+                    >
+                      <Icon className="h-4 w-4 text-cyan-300" />
+                      {item.label}
+                    </a>
+                  )
+                }
+                return (
+                  <button
+                    key={item.label}
+                    onClick={() => item.prompt && void sendMessage(item.prompt)}
+                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left text-xs font-medium text-white/75 transition hover:-translate-y-0.5 hover:bg-white/8"
+                  >
+                    <Icon className="h-4 w-4 text-cyan-300" />
+                    {item.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-[28px] border border-white/10 bg-gradient-to-br from-cyan-400/10 via-white/[0.04] to-fuchsia-500/10 p-5 backdrop-blur-xl">
+            <div className="text-xs uppercase tracking-[0.28em] text-white/35">Final polish</div>
+            <div className="mt-1 text-lg font-semibold text-white">Smooth like a mini app</div>
+            <p className="mt-3 text-sm leading-7 text-white/60">
+              If you want, next pass we can add: bottom nav, wallet connect button, Farcaster frame cards, and a command drawer.
+            </p>
+          </div>
+        </aside>
       </main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#060816]/92 px-3 py-2 backdrop-blur-xl md:hidden">
+        <div className="mx-auto grid max-w-7xl grid-cols-5 gap-2">
+          {modes.map((mode) => {
+            const Icon = mode.icon
+            const active = mode.id === activeMode
+            return (
+              <button
+                key={mode.id}
+                onClick={() => setActiveMode(mode.id)}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] transition ${
+                  active ? 'bg-cyan-400/12 text-cyan-100' : 'text-white/50'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{mode.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </nav>
     </div>
   )
 }
 
-function GithubIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-    </svg>
-  )
-}
+export default App
