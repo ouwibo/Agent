@@ -24,7 +24,6 @@ import {
   User,
   Wallet,
   X,
-  Zap,
 } from 'lucide-react'
 import './index.css'
 
@@ -227,15 +226,18 @@ function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 focus:border-cyan-400/30 focus:bg-white/8"
-            >
-              <option value="qwen3.5-turbo">Qwen Turbo</option>
-              <option value="qwen3.5-plus">Qwen Plus</option>
-              <option value="qwen3.5-max">Qwen Max</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] uppercase tracking-[0.28em] text-white/35">Model</span>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 focus:border-cyan-400/30 focus:bg-white/8"
+              >
+                <option value="qwen3.5-turbo">Qwen Turbo</option>
+                <option value="qwen3.5-plus">Qwen Plus</option>
+                <option value="qwen3.5-max">Qwen Max</option>
+              </select>
+            </div>
             <button
               className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 md:hidden"
               onClick={() => setMenuOpen((v) => !v)}
@@ -290,10 +292,10 @@ function App() {
             <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
               <div>
                 <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
-                  Make Ouwibo feel like a polished mini app.
+                  Ouwibo AI is a mini app, not a plain chat box.
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-white/60 sm:text-base">
-                  Dense button set, soft motion, mobile-first spacing, and a clear action surface for chat, crypto, frames, and onchain workflows.
+                  Pick a model, choose a mode, then fire any prompt. No default conversation noise, no clutter, just a clean action surface for your agent.
                 </p>
               </div>
 
