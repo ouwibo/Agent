@@ -32,6 +32,7 @@ type Message = {
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  model?: string
 }
 
 type Mode = 'chat' | 'frames' | 'wallet' | 'market' | 'docs'
@@ -44,16 +45,6 @@ type QuickAction = {
 }
 
 const API_URL = 'https://agent.ouwibo.workers.dev'
-
-const starterMessages: Message[] = [
-  {
-    id: 'welcome',
-    role: 'assistant',
-    content:
-      'Welcome to Ouwibo Agent. Choose a mode, tap a quick action, or start chatting for strategy, crypto, Farcaster, and onchain workflows.',
-    timestamp: new Date(),
-  },
-]
 
 const quickActions: QuickAction[] = [
   { label: 'Build a mini app', prompt: 'Create a Farcaster-style mini app UI with smooth mobile interactions.', icon: Rocket },
@@ -93,12 +84,13 @@ function formatTime(date: Date) {
 }
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>(starterMessages)
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [activeMode, setActiveMode] = useState<Mode>('chat')
+  const [selectedModel, setSelectedModel] = useState('qwen3.5-plus')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -106,7 +98,7 @@ function App() {
   }, [messages, loading])
 
   useEffect(() => {
-    document.title = 'Ouwibo Agent | Mini App'
+    document.title = 'Ouwibo AI | Mini App'
   }, [])
 
   const statusText = useMemo(() => {
@@ -114,7 +106,7 @@ function App() {
     return 'Ready'
   }, [loading])
 
-  async function sendMessage(prompt: string) {
+  async function sendMessage(prompt: string, model: string = selectedModel) {
     const content = prompt.trim()
     if (!content || loading) return
 
@@ -123,6 +115,7 @@ function App() {
       role: 'user',
       content,
       timestamp: new Date(),
+      model,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -136,7 +129,7 @@ function App() {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-        body: JSON.stringify({ message: content }),
+        body: JSON.stringify({ message: content, model }),
       })
 
       const data = await response.json()
@@ -147,6 +140,7 @@ function App() {
         role: 'assistant',
         content: reply,
         timestamp: new Date(),
+        model,
       }
 
       setMessages((prev) => [...prev, aiMessage])
@@ -168,7 +162,7 @@ function App() {
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault()
-    void sendMessage(input)
+    void sendMessage(input, selectedModel)
   }
 
   function copyText(text: string, id: string) {
@@ -202,7 +196,7 @@ function App() {
               <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(74,222,128,0.9)]" />
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-[0.35em] text-white/35">Ouwibo Agent</div>
+              <div className="text-[11px] uppercase tracking-[0.35em] text-white/35">Ouwibo AI</div>
               <div className="flex items-center gap-2 text-sm font-medium text-white/85">
                 <span>{modeTitle}</span>
                 <span className="rounded-full border border-white/10 bg-white/6 px-2 py-0.5 text-[10px] text-white/50">{statusText}</span>
@@ -231,13 +225,24 @@ function App() {
             })}
           </div>
 
-          <button
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 md:hidden"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 focus:border-cyan-400/30 focus:bg-white/8"
+            >
+              <option value="qwen3.5-turbo">Qwen Turbo</option>
+              <option value="qwen3.5-plus">Qwen Plus</option>
+              <option value="qwen3.5-max">Qwen Max</option>
+            </select>
+            <button
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-white/80 transition hover:bg-white/10 md:hidden"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Toggle menu"
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {menuOpen ? (
@@ -312,7 +317,7 @@ function App() {
                 return (
                   <button
                     key={action.label}
-                    onClick={() => action.prompt && void sendMessage(action.prompt)}
+                    onClick={() => action.prompt && void sendMessage(action.prompt, selectedModel)}
                     className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left transition-all hover:-translate-y-0.5 hover:border-cyan-400/25 hover:bg-white/8 hover:shadow-[0_16px_60px_-24px_rgba(34,211,238,0.35)]"
                   >
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400/20 to-fuchsia-500/20 text-cyan-100">
@@ -427,7 +432,7 @@ function App() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
-                    void sendMessage(input)
+                    void sendMessage(input, selectedModel)
                   }
                 }}
                 placeholder="Ask for a Farcaster post, crypto scan, mobile UI, or onchain plan"
@@ -507,7 +512,7 @@ function App() {
                 return (
                   <button
                     key={item.label}
-                    onClick={() => item.prompt && void sendMessage(item.prompt)}
+                    onClick={() => item.prompt && void sendMessage(item.prompt, selectedModel)}
                     className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left text-xs font-medium text-white/75 transition hover:-translate-y-0.5 hover:bg-white/8"
                   >
                     <Icon className="h-4 w-4 text-cyan-300" />
