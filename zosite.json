@@ -1,0 +1,9 @@
+{
+  "name": "ouwibo-agent",
+  "version": "1.0.0",
+  "description": "Ouwibo AI Agent - premium dark UI with Zo API",
+  "build": {
+    "command": "cd frontend && npm install && npm run build",
+    "output": "frontend/dist"
+  }
+}
