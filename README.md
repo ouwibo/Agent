@@ -1,42 +1,46 @@
 # Ouwibo Agent v2.0 - Web3 AI Platform
 
-<div align="center">
-
 ![Ouwibo Agent](https://img.shields.io/badge/Ouwibo-Agent-amber?style=for-the-badge)
+
 ![Version](https://img.shields.io/badge/version-2.0.0-blue?style=flat-square)
+
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white&style=flat-square)
+
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=Cloudflare&logoColor=white&style=flat-square)
 
 **Advanced Web3 AI Platform with Chat, Crypto Trading, NFT Minting, and Farcaster Frames**
 
 [🚀 Live Demo](https://agent.ouwibo.workers.dev) • [📖 Documentation](#documentation) • [🤝 Contributing](#contributing)
 
-</div>
-
 ---
 
 ## ✨ Features
 
 ### 🤖 AI Chat
+
 - **Multi-model support**: Qwen, GPT-4o, Claude
 - **Chain-of-thought reasoning**
 - **Function calling** for on-chain operations
 - **Session memory** across conversations
 
 ### 💰 Crypto Trading
+
 - **Multi-chain support**: Ethereum, Polygon, Base, Arbitrum, Optimism, BSC
 - **Wallet connection**: MetaMask, WalletConnect, Rainbow, Privy
 - **DEX integration**: 1inch, Uniswap, 0x API
 - **Real-time prices** via CoinGecko
 
 ### 🎨 NFT Minting
+
 - **AI-generated NFTs** from chat conversations
 - **Smart contract**: ERC-721 with royalties
 - **Cross-chain minting** on supported networks
 - **Gallery view** for your collection
 
 ### 📱 Farcaster Frames
+
 - **Chat Frame**: AI chat in Warpcast feed
 - **Crypto Frame**: Prices and swaps in feed
 - **NFT Frame**: Mint directly from frames
@@ -46,7 +50,7 @@
 
 ## 🏗️ Architecture
 
-```
+```markdown
 ┌─────────────────────────────────────────────────┐
 │                 PRESENTATION                     │
 │  🌐 Web (Next.js)  📱 Mobile  🎭 Farcaster Frames │
@@ -75,6 +79,7 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+ or Bun
 - Cloudflare account
 - Git
@@ -129,13 +134,15 @@ npm run deploy
 ## 📖 API Reference
 
 ### Base URL
-```
+
+```markdown
 https://agent.ouwibo.workers.dev
 ```
 
 ### Endpoints
 
 #### `POST /api/chat`
+
 Send a message to the AI agent.
 
 ```json
@@ -154,9 +161,10 @@ Send a message to the AI agent.
 ```
 
 #### `GET /api/crypto/balance`
+
 Get wallet balance for a specific chain.
 
-```
+```markdown
 GET /api/crypto/balance?address=0x...&chain=eth
 
 // Response
@@ -170,6 +178,7 @@ GET /api/crypto/balance?address=0x...&chain=eth
 ```
 
 #### `POST /api/crypto/swap`
+
 Get a swap quote and transaction data.
 
 ```json
@@ -184,6 +193,7 @@ Get a swap quote and transaction data.
 ```
 
 #### `POST /api/farcaster/frames/chat`
+
 Handle Farcaster chat frame interaction.
 
 ---
@@ -193,7 +203,7 @@ Handle Farcaster chat frame interaction.
 ### Backend Environment Variables
 
 | Variable | Description | Required |
-|----------|-------------|----------|
+| --- | --- | --- |
 | `DASHSCOPE_API_KEY` | Qwen API key | ✅ |
 | `ALCHEMY_API_KEY` | Alchemy RPC | Optional |
 | `MORALIS_API_KEY` | Moralis API | Optional |
@@ -204,7 +214,7 @@ Handle Farcaster chat frame interaction.
 ### Supported Chains
 
 | Chain | ID | Symbol |
-|-------|-----|--------|
+| --- | --- | --- |
 | Ethereum | 1 | ETH |
 | Polygon | 137 | MATIC |
 | Base | 8453 | ETH |
@@ -216,7 +226,7 @@ Handle Farcaster chat frame interaction.
 
 ## 📁 Project Structure
 
-```
+```markdown
 ouwibo/Agent/
 ├── backend/                # Cloudflare Workers API
 │   ├── src/
@@ -286,27 +296,43 @@ cd contracts && npx hardhat test
 ## 📈 Roadmap
 
 ### Phase 1: Core Web3 Backend ✅
+
 - [x] Multi-chain support
+
 - [x] Wallet integration
+
 - [x] DEX aggregator
+
 - [x] Farcaster Frame validation
 
 ### Phase 2: Farcaster Frames 🚧
+
 - [ ] Chat Frame complete
+
 - [ ] Crypto Frame complete
+
 - [ ] NFT Frame complete
+
 - [ ] Publish to Frames.xyz
 
 ### Phase 3: Mobile App 📱
+
 - [ ] React Native setup
+
 - [ ] Mobile wallet integration
+
 - [ ] Push notifications
+
 - [ ] App Store deployment
 
 ### Phase 4: Onchain AI Agent 🤖
+
 - [ ] Deploy smart contracts
+
 - [ ] Treasury management
+
 - [ ] DAO governance
+
 - [ ] Analytics dashboard
 
 ---
@@ -327,10 +353,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-<div align="center">
-
 **Built with ❤️ by [Ouwibo](https://github.com/ouwibo)**
 
 [🌐 Website](https://agent.ouwibo.workers.dev) • [🐦 Twitter](https://twitter.com/ouwibo) • [💬 Discord](https://discord.gg/ouwibo)
-
-</div>
