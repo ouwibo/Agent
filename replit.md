@@ -1,35 +1,78 @@
-# AI Agent Website
+# OUWIBO Agent
 
-## Project Overview
+Autonomous AI agent website with web search, code writing, URL browsing, and task planning. Built with React + Vite (frontend) and Node.js Express (backend).
 
-An autonomous AI agent website that can perform complex automated tasks — web search, code writing, URL browsing, and task planning — powered by OpenAI GPT-4o-mini with tool calling.
+## Stack
 
-## Architecture
-
-- **Frontend**: React 19 + Vite + TypeScript + Tailwind CSS, running on port 5000
-- **Backend**: Node.js + Express server, running on port 3001
-- **AI**: OpenAI GPT-4o-mini with tool calling (streaming SSE)
+| Layer    | Tech                              | Port |
+|----------|-----------------------------------|------|
+| Frontend | React 19 · Vite · TypeScript · Tailwind | 5000 |
+| Backend  | Node.js · Express · SSE streaming  | 3001 |
+| AI       | OpenAI / Groq / Gemini (tool calling) | — |
 
 ## Pages
 
-- `/` — Landing page showcasing agent capabilities
-- `/agent` — Main AI agent chat interface with tool use visualization
+- `/` — Landing page
+- `/dashboard` — System dashboard with stats & agent monitor
+- `/agent` — Main AI agent chat interface
 
 ## Agent Tools
 
-- `search_web` — Searches the internet for real-time information
-- `write_code` — Writes, debugs, and explains code in any language
-- `browse_url` — Visits URLs and extracts relevant information
-- `create_plan` — Breaks down complex goals into actionable steps
+| Tool | Description |
+|------|-------------|
+| `search_web` | Search the internet in real-time |
+| `write_code` | Write/debug code in any language |
+| `browse_url` | Visit a URL and extract content |
+| `create_plan` | Break down goals into actionable steps |
 
-## Local Development
+## AI Providers
 
-- Frontend: `cd frontend && npm run dev` (port 5000)
-- Backend: `cd server && node index.js` (port 3001)
+| Provider | Free? | Key Variable | Get Key |
+|----------|-------|--------------|---------|
+| OpenAI GPT-4o-mini | No | `OPENAI_API_KEY` | platform.openai.com |
+| Groq Llama 3 70B | **Yes** | `GROQ_API_KEY` | console.groq.com |
+| Google Gemini Flash | **Yes** | `GEMINI_API_KEY` | aistudio.google.com |
+
+## Development
+
+```bash
+# Frontend (port 5000)
+cd frontend && npm run dev
+
+# Backend (port 3001)
+cd server && node index.js
+```
+
+## Production Setup
+
+Set at least one API key as a Replit Secret so users don't need their own:
+
+```
+GROQ_API_KEY=gsk_...        # Recommended (free tier available)
+OPENAI_API_KEY=sk-...       # Or OpenAI
+GEMINI_API_KEY=AIza...      # Or Gemini
+```
+
+## Structure
+
+```
+ouwibo-agent/
+├── frontend/          React + Vite app
+│   ├── src/
+│   │   ├── pages/     home · dashboard · agent · not-found
+│   │   ├── components/
+│   │   │   ├── matrix-background.tsx
+│   │   │   └── ui/card.tsx
+│   │   └── main.tsx
+│   └── vite.config.ts
+├── server/            Express backend
+│   ├── index.js       Agent API with SSE streaming
+│   └── .env.example   Environment variable template
+└── replit.md
+```
 
 ## User Preferences
 
-- Use TypeScript throughout
-- Follow existing project structure and conventions
-- Dark cyberpunk aesthetic with green (#00ff41) accent color
-- OpenAI API key stored in browser localStorage
+- TypeScript throughout the frontend
+- Dark cyberpunk aesthetic with green (#00ff41) accent
+- Follow existing project structure
