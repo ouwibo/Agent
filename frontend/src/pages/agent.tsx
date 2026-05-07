@@ -85,7 +85,7 @@ function ThinkingIndicator() {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70"
+      className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] text-white/70"
     >
       <div className="flex items-center gap-1.5">
         {[0, 1, 2].map((i) => (
@@ -98,27 +98,17 @@ function ThinkingIndicator() {
         ))}
       </div>
       <span className="font-mono tracking-wider text-white/60">THINKING...</span>
-      <span className="h-4 w-px bg-white/10" />
-      <span className="text-white/35">menyiapkan jawaban</span>
     </motion.div>
   );
 }
 
 function WritingIndicator({ text }: { text: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-[82%] md:max-w-[68%]"
-    >
-      <div className="rounded-2xl rounded-bl-sm border border-white/10 bg-white/5 px-3 py-2.5 text-[13px] leading-relaxed text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="max-w-[82%] md:max-w-[68%]">
+      <div className="rounded-2xl rounded-bl-sm border border-white/10 bg-white/5 px-3 py-2.5 text-[13px] leading-relaxed text-white/90">
         <pre className="whitespace-pre-wrap font-sans">
           {text}
-          <motion.span
-            animate={{ opacity: [0.2, 1, 0.2] }}
-            transition={{ duration: 0.8, repeat: Infinity }}
-            className="ml-1 inline-block h-4 w-2 bg-primary align-bottom"
-          />
+          <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 0.8, repeat: Infinity }} className="ml-1 inline-block h-4 w-2 bg-primary align-bottom" />
         </pre>
       </div>
       <div className="mt-1 px-1 text-[10px] font-mono tracking-wider text-primary/40">LIVE WRITING</div>
@@ -250,23 +240,14 @@ export default function AgentPage() {
             continue;
           }
 
-          if (evt?.type === "thinking") {
-            setThinking(true);
-          }
-
+          if (evt?.type === "thinking") setThinking(true);
           if (evt?.type === "text" && evt.content) {
             finalText += evt.content;
             setThinking(false);
             setStreamingText(finalText);
           }
-
-          if (evt?.type === "error") {
-            throw new Error(evt.message || "AI returned an error");
-          }
-
-          if (evt?.type === "done") {
-            break;
-          }
+          if (evt?.type === "error") throw new Error(evt.message || "AI returned an error");
+          if (evt?.type === "done") break;
         }
       }
 
@@ -348,17 +329,14 @@ export default function AgentPage() {
             <span className="text-sm font-bold tracking-wider text-white">OUWIBO<span className="text-primary">_</span></span>
           </Link>
         </div>
-
         <div className="space-y-2 border-b border-white/6 p-3.5">
           <div className="flex items-center gap-2"><div className={`h-2 w-2 rounded-full ${health?.ok ? "bg-primary" : "bg-red-500"} animate-pulse`} /><span className="text-xs font-mono text-white/35">{health?.ok ? "SERVER ONLINE" : "SERVER OFFLINE"}</span></div>
           <div className="flex items-center gap-2"><div className={`h-2 w-2 rounded-full ${serverHasAiKey ? "bg-primary" : "bg-yellow-500"} animate-pulse`} /><span className="text-xs font-mono text-white/35">{serverHasAiKey ? "API KEY ACTIVE" : "SET ZO_API_KEY"}</span></div>
         </div>
-
         <div className="p-3 space-y-2">
           <button onClick={() => setShowSettings(true)} className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/3 px-3 py-2.5 text-sm font-medium text-white/55 transition-all hover:bg-white/8 hover:text-white"><Settings className="h-4 w-4" />Model · {modelLabel}</button>
           <button onClick={() => { setMessages([]); setConversationId(""); setStreamingText(""); localStorage.removeItem(CONVERSATION_STORAGE_KEY); }} disabled={loading && !messages.length} className="flex w-full items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-sm font-medium text-red-400/55 transition-all hover:bg-red-500/10 hover:text-red-400 disabled:opacity-25"><Trash2 className="h-4 w-4" />Clear Chat</button>
         </div>
-
         <div className="flex-1 overflow-y-auto p-3">
           <p className="mb-2 px-2 py-1 text-[10px] tracking-[0.28em] text-white/20 font-mono">QUICK PROMPTS</p>
           <div className="space-y-1.5">
