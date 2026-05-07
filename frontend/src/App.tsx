@@ -1,6 +1,7 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import Home from "@/pages/home";
+import Dashboard from "@/pages/dashboard";
 import AgentPage from "@/pages/agent";
 import NotFound from "@/pages/not-found";
 
@@ -29,6 +30,7 @@ function Router() {
     <AnimatePresence mode="wait">
       <Switch>
         <Route path="/" component={() => <AnimatedRoute component={Home} />} />
+        <Route path="/dashboard" component={() => <AnimatedRoute component={Dashboard} />} />
         <Route path="/agent" component={() => <AnimatedRoute component={AgentPage} />} />
         <Route component={NotFound} />
       </Switch>

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { MatrixBackground } from "@/components/matrix-background";
-import { Globe, Code2, BrainCircuit, Zap, ArrowRight, Bot, Search, FileCode, ListTodo } from "lucide-react";
+import { Globe, Code2, BrainCircuit, Zap, ArrowRight, Bot, Search, ListTodo, LayoutDashboard } from "lucide-react";
 
 const capabilities = [
   { icon: Search, title: "Web Search", desc: "Searches the internet in real-time to gather up-to-date information on any topic.", tag: "TOOL" },
@@ -14,9 +14,9 @@ const examples = [
   "Research the latest AI trends and write a summary report",
   "Build me a Python web scraper for product prices",
   "Create a 30-day learning plan for machine learning",
-  "Find the top 5 competitors of Tesla and analyze their strengths",
+  "Find the top 5 competitors of Tesla and analyze them",
   "Write a REST API in Node.js with authentication",
-  "Explain how transformer models work and give code examples",
+  "Explain how transformer models work with code examples",
 ];
 
 const stagger = {
@@ -49,7 +49,7 @@ export default function Home() {
         >
           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           <span className="text-[11px] font-mono text-primary tracking-[0.18em] font-medium">
-            AUTONOMOUS AI AGENT · ONLINE
+            AUTONOMOUS INTELLIGENCE ONLINE
           </span>
         </motion.div>
 
@@ -57,22 +57,25 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-3"
+          className="mb-3 flex flex-col items-center"
         >
-          <div className="flex items-center justify-center gap-4 mb-2">
-            <BrainCircuit className="w-10 h-10 text-primary opacity-80" />
-          </div>
+          <BrainCircuit className="w-10 h-10 text-primary opacity-80 mb-2" />
           <h1
             className="glitch-text font-bold leading-none select-none"
             style={{
               fontFamily: "var(--app-font-display)",
-              fontSize: "clamp(3.5rem, 18vw, 10rem)",
+              fontSize: "clamp(3rem, 16vw, 9rem)",
               letterSpacing: "-0.025em",
               textShadow: "0 0 60px rgba(0,255,65,0.3)",
             }}
           >
-            AI AGENT
+            OUWIBO
           </h1>
+          <p
+            className="font-mono text-primary/60 tracking-[0.35em] text-sm mt-1"
+          >
+            AGENT
+          </p>
         </motion.div>
 
         <motion.p
@@ -93,14 +96,23 @@ export default function Home() {
           className="flex flex-col sm:flex-row items-center gap-3"
         >
           <Link
-            href="/agent"
+            href="/dashboard"
             className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-full bg-primary px-8 py-[14px] font-semibold text-black transition-all duration-300 hover:scale-[1.04] active:scale-[0.97] hover:shadow-[0_0_52px_rgba(0,255,65,0.65)] w-full sm:w-auto justify-center"
             style={{ fontFamily: "var(--app-font-sans)", fontSize: "0.9375rem", letterSpacing: "-0.01em" }}
           >
-            <Bot className="w-4 h-4 relative z-10" />
-            <span className="relative z-10">Start Agent</span>
+            <LayoutDashboard className="w-4 h-4 relative z-10" />
+            <span className="relative z-10">Open Dashboard</span>
             <ArrowRight className="relative z-10 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             <span className="absolute inset-0 bg-white/15 translate-y-full group-hover:translate-y-0 transition-transform duration-300 rounded-full" />
+          </Link>
+
+          <Link
+            href="/agent"
+            className="group inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/4 px-8 py-[14px] font-medium text-white/75 backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:bg-primary/10 hover:text-white active:scale-[0.97] w-full sm:w-auto justify-center"
+            style={{ fontFamily: "var(--app-font-sans)", fontSize: "0.9375rem", letterSpacing: "-0.01em" }}
+          >
+            <Bot className="w-4 h-4 text-primary" />
+            <span>Try AI Agent</span>
           </Link>
         </motion.div>
 
@@ -129,15 +141,10 @@ export default function Home() {
 
           <motion.h2
             variants={rise}
-            className="mb-12 text-white leading-tight"
-            style={{
-              fontFamily: "var(--app-font-display)",
-              fontSize: "clamp(2rem, 5vw, 3.5rem)",
-              fontWeight: 700,
-              letterSpacing: "-0.03em",
-            }}
+            className="mb-12 text-white leading-tight font-bold"
+            style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", letterSpacing: "-0.03em" }}
           >
-            What the agent can do
+            What OUWIBO can do
           </motion.h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -177,7 +184,7 @@ export default function Home() {
             className="mb-8 text-white font-bold leading-tight"
             style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.03em" }}
           >
-            Try asking the agent...
+            Try asking OUWIBO...
           </motion.h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -213,27 +220,37 @@ export default function Home() {
             className="text-white mb-4 leading-tight font-bold"
             style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)", letterSpacing: "-0.03em" }}
           >
-            Ready to automate?
+            Ready to connect?
           </h2>
           <p className="text-white/35 mb-8 leading-relaxed text-base">
-            Give the agent any task and watch it work autonomously using its built-in tools.
+            Access the full power of OUWIBO — one command away.
           </p>
-          <Link
-            href="/agent"
-            className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-full bg-primary px-9 py-[15px] font-semibold text-black transition-all duration-300 hover:scale-[1.04] active:scale-[0.97] hover:shadow-[0_0_60px_rgba(0,255,65,0.6)]"
-            style={{ fontSize: "1rem" }}
-          >
-            <Bot className="w-4 h-4 relative z-10" />
-            <span className="relative z-10">Launch AI Agent</span>
-            <ArrowRight className="relative z-10 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
-            <span className="absolute inset-0 bg-white/15 translate-y-full group-hover:translate-y-0 transition-transform duration-300 rounded-full" />
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/dashboard"
+              className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-full bg-primary px-9 py-[15px] font-semibold text-black transition-all duration-300 hover:scale-[1.04] active:scale-[0.97] hover:shadow-[0_0_60px_rgba(0,255,65,0.6)] w-full sm:w-auto justify-center"
+              style={{ fontSize: "1rem" }}
+            >
+              <LayoutDashboard className="w-4 h-4 relative z-10" />
+              <span className="relative z-10">Open Dashboard</span>
+              <ArrowRight className="relative z-10 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+              <span className="absolute inset-0 bg-white/15 translate-y-full group-hover:translate-y-0 transition-transform duration-300 rounded-full" />
+            </Link>
+            <Link
+              href="/agent"
+              className="group inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-transparent px-9 py-[15px] font-medium text-white/65 transition-all duration-300 hover:border-primary/45 hover:text-white hover:bg-primary/8 active:scale-[0.97] w-full sm:w-auto justify-center"
+              style={{ fontSize: "1rem" }}
+            >
+              <Bot className="w-4 h-4 text-primary" />
+              <span>Talk to Agent</span>
+            </Link>
+          </div>
         </motion.div>
       </section>
 
       <footer className="relative z-10 py-8 px-6 border-t border-white/6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span className="text-white/25 font-mono text-xs tracking-widest">AI AGENT © 2026</span>
+          <span className="text-white/25 font-mono text-xs tracking-widest">OUWIBO AGENT © 2026</span>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
             <span className="text-primary/40 font-mono text-xs tracking-wider">ALL SYSTEMS NOMINAL</span>

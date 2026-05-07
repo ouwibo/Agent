@@ -378,9 +378,9 @@ export default function AgentPage() {
         {/* Sidebar */}
         <aside className="hidden md:flex w-64 flex-col border-r border-white/8 bg-black/90 backdrop-blur-xl relative z-10">
           <div className="p-4 border-b border-white/8 flex items-center justify-between">
-            <Link href="/" className="group flex items-center gap-2 text-white/50 hover:text-white transition-colors">
+            <Link href="/dashboard" className="group flex items-center gap-2 text-white/50 hover:text-white transition-colors">
               <ArrowLeft className="w-4 h-4" />
-              <span className="font-bold text-base text-white tracking-wider">AI AGENT</span>
+              <span className="font-bold text-base text-white tracking-wider">OUWIBO<span className="text-primary">_</span></span>
             </Link>
           </div>
 
@@ -447,7 +447,7 @@ export default function AgentPage() {
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${streaming ? "bg-yellow-400 animate-pulse" : "bg-primary animate-pulse"}`} />
               <span className="font-mono text-sm text-white/60">
-                {streaming ? "AGENT WORKING..." : "AI AGENT // READY"}
+                {streaming ? "OUWIBO WORKING..." : "OUWIBO AGENT // READY"}
               </span>
             </div>
             <div className="ml-auto flex items-center gap-2">
@@ -480,7 +480,7 @@ export default function AgentPage() {
                   <Bot className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white mb-1">AI Agent</h2>
+                  <h2 className="text-xl font-bold text-white mb-1">OUWIBO Agent</h2>
                   <p className="text-sm text-white/35 font-mono max-w-sm">
                     Give me any task — I'll use my tools to search the web, write code, browse pages, and create plans.
                   </p>
@@ -585,7 +585,7 @@ export default function AgentPage() {
               </button>
             </div>
             <p className="text-center text-[10px] text-white/15 mt-2 font-mono">
-              ENTER to send · SHIFT+ENTER for new line · GPT-4o-mini
+              ENTER to send · SHIFT+ENTER for new line · OUWIBO AGENT · GPT-4o-mini
             </p>
           </div>
         </div>
