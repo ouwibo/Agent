@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import {
-  Activity, Terminal, Users, Network, Settings, LogOut,
+  Activity, Terminal, Settings, LogOut,
   Server, Menu, X, Bot, Search, Code2, Globe, ListTodo,
   LayoutDashboard, Zap, CheckCircle2, Clock, TrendingUp, Cpu
 } from "lucide-react";
 import { MatrixBackground } from "@/components/matrix-background";
+import { fetchLiveStats } from "@/lib/live-stats";
 
 const agents = [
   { id: "OUWIBO-1", status: "ACTIVE", task: "Researching AI trends", load: 72, tool: "search_web" },
@@ -56,41 +57,74 @@ const navItems = [
   { icon: Settings, label: "Settings", href: "/dashboard", active: false },
 ];
 
+type LiveStats = {
+  ok: boolean;
+  uptimeSec?: number;
+  requestsHandled?: number;
+  serverKeys?: Record<string, boolean>;
+  availableProviders?: string[];
+};
+
+function formatUptime(totalSec: number) {
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const sec = totalSec % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
 export default function Dashboard() {
   const [logs, setLogs] = useState<string[]>(mockLogs.slice(0, 4));
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [tasksCount, setTasksCount] = useState(14892);
-  const [uptime, setUptime] = useState(342 * 3600 + 12 * 60 + 4);
+  const [live, setLive] = useState<LiveStats | null>(null);
+  const [apiHealth, setApiHealth] = useState<LiveStats | null>(null);
 
   useEffect(() => {
-    const logInterval = setInterval(() => {
+    const tick = () => {
       setLogs(prev => {
         const nextLog = mockLogs[Math.floor(Math.random() * mockLogs.length)];
         const ts = new Date().toLocaleTimeString();
-        const newLogs = [...prev, `[${ts}] ${nextLog}`];
-        return newLogs.slice(-8);
+        return [...prev, `[${ts}] ${nextLog}`].slice(-8);
       });
-    }, 2800);
-    const uptimeInterval = setInterval(() => {
-      setUptime(s => s + 1);
-      setTasksCount(c => Math.random() > 0.7 ? c + 1 : c);
-    }, 1000);
-    return () => { clearInterval(logInterval); clearInterval(uptimeInterval); };
+    };
+    const logInterval = setInterval(tick, 2800);
+    return () => clearInterval(logInterval);
   }, []);
 
-  const formatUptime = (s: number) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  };
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const data = await fetchLiveStats();
+        if (alive) {
+          setLive(data);
+          setApiHealth(data);
+        }
+      } catch {
+        if (alive) setApiHealth({ ok: false });
+      }
+    };
+    load();
+    const id = setInterval(load, 10000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  const uptimeLabel = useMemo(() => {
+    const sec = live?.uptimeSec ?? 0;
+    return formatUptime(sec);
+  }, [live]);
+
+  const tasksDone = live?.requestsHandled ?? logs.length;
+  const backendKeyState = live?.serverKeys ?? {};
+  const backendOk = apiHealth?.ok ?? false;
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden flex selection:bg-primary selection:text-black">
       <MatrixBackground />
       <div className="scanline" />
 
-      {/* Mobile overlay */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
@@ -103,33 +137,19 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
       <aside
-        className={`
-          fixed md:relative inset-y-0 left-0 z-30 md:z-20
-          w-64 border-r border-primary/20 bg-black/95 backdrop-blur-md flex flex-col
-          transition-transform duration-300 ease-in-out
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-        `}
+        className={`fixed md:relative inset-y-0 left-0 z-30 md:z-20 w-64 border-r border-primary/20 bg-black/95 backdrop-blur-md flex flex-col transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         <div className="p-5 border-b border-primary/20 flex items-center justify-between">
           <Link href="/">
             <div className="flex items-center gap-2.5 cursor-pointer group">
-              <img
-                src="/logo.png"
-                alt="OUWIBO"
-                className="w-8 h-8 rounded-full object-cover border border-primary/40 shadow-[0_0_10px_rgba(0,255,65,0.3)]"
-                style={{ objectPosition: "center 15%" }}
-              />
+              <img src="/logo.png" alt="OUWIBO" className="w-8 h-8 rounded-full object-cover border border-primary/40 shadow-[0_0_10px_rgba(0,255,65,0.3)]" style={{ objectPosition: "center 15%" }} />
               <h2 className="text-xl font-bold text-white tracking-widest drop-shadow-[0_0_5px_rgba(0,255,65,0.8)] group-hover:text-primary transition-colors">
                 OUWIBO<span className="text-primary animate-pulse">_</span>
               </h2>
             </div>
           </Link>
-          <button
-            className="md:hidden text-primary/60 hover:text-primary transition-colors"
-            onClick={() => setSidebarOpen(false)}
-          >
+          <button className="md:hidden text-primary/60 hover:text-primary transition-colors" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -137,71 +157,49 @@ export default function Dashboard() {
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item, i) => (
             <Link key={i} href={item.href}>
-              <button
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-left font-medium text-sm ${
-                  item.active
-                    ? "bg-primary/15 text-primary border border-primary/25"
-                    : "hover:bg-white/5 text-white/40 hover:text-white"
-                }`}
-              >
+              <button className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-left font-medium text-sm ${item.active ? "bg-primary/15 text-primary border border-primary/25" : "hover:bg-white/5 text-white/40 hover:text-white"}`}>
                 <item.icon className="w-4 h-4" />
                 <span>{item.label}</span>
-                {item.label === "AI Agent" && (
-                  <span className="ml-auto text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-md font-mono">LIVE</span>
-                )}
+                {item.label === "AI Agent" && <span className="ml-auto text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-md font-mono">LIVE</span>}
               </button>
             </Link>
           ))}
         </nav>
 
-        {/* System status */}
         <div className="p-4 border-t border-primary/15 space-y-2">
           <p className="text-[10px] font-mono text-white/25 tracking-widest mb-3">SYSTEM STATUS</p>
           {[
-            { label: "Backend API", ok: true },
-            { label: "OpenAI API", ok: true },
-            { label: "Agent Runtime", ok: true },
+            { label: "Backend API", ok: backendOk },
+            { label: "OpenAI API", ok: !!backendKeyState.openai },
+            { label: "Groq API", ok: !!backendKeyState.groq },
           ].map((s, i) => (
             <div key={i} className="flex items-center gap-2">
               <div className={`w-1.5 h-1.5 rounded-full ${s.ok ? "bg-primary animate-pulse" : "bg-red-500"}`} />
               <span className="text-xs font-mono text-white/35">{s.label}</span>
-              <span className={`ml-auto text-[10px] font-mono ${s.ok ? "text-primary/50" : "text-red-500/50"}`}>
-                {s.ok ? "OK" : "ERR"}
-              </span>
+              <span className={`ml-auto text-[10px] font-mono ${s.ok ? "text-primary/50" : "text-red-500/50"}`}>{s.ok ? "OK" : "ERR"}</span>
             </div>
           ))}
         </div>
 
         <div className="p-4 border-t border-primary/15">
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all duration-200 w-full text-left text-sm font-medium"
-          >
+          <Link href="/" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all duration-200 w-full text-left text-sm font-medium">
             <LogOut className="w-4 h-4" />
             <span>Back to Home</span>
           </Link>
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col relative z-10 h-screen overflow-hidden min-w-0">
-        {/* Top bar */}
         <header className="h-14 border-b border-primary/15 bg-black/60 backdrop-blur-md flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3">
-            <button
-              className="md:hidden text-primary/60 hover:text-primary transition-colors"
-              onClick={() => setSidebarOpen(true)}
-            >
+            <button className="md:hidden text-primary/60 hover:text-primary transition-colors" onClick={() => setSidebarOpen(true)}>
               <Menu className="w-5 h-5" />
             </button>
             <Server className="w-4 h-4 text-primary/40 hidden sm:block" />
             <span className="font-mono font-bold tracking-widest text-sm text-white/70">OUWIBO_DASHBOARD</span>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
-            <Link
-              href="/agent"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 border border-primary/30 text-primary text-xs font-medium hover:bg-primary/25 transition-all"
-            >
+            <Link href="/agent" className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 border border-primary/30 text-primary text-xs font-medium hover:bg-primary/25 transition-all">
               <Bot className="w-3 h-3" />
               <span className="hidden sm:inline">Launch Agent</span>
               <span className="sm:hidden">Agent</span>
@@ -214,38 +212,22 @@ export default function Dashboard() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-5">
-
-          {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { icon: CheckCircle2, label: "TASKS DONE", val: tasksCount.toLocaleString(), color: "text-primary" },
-              { icon: Cpu, label: "ACTIVE AGENTS", val: "3 / 4", color: "text-blue-400" },
-              { icon: TrendingUp, label: "SUCCESS RATE", val: "99.8%", color: "text-green-400" },
-              { icon: Clock, label: "UPTIME", val: formatUptime(uptime), color: "text-yellow-400" },
+              { icon: CheckCircle2, label: "TASKS DONE", val: tasksDone.toLocaleString(), color: "text-primary" },
+              { icon: Cpu, label: "ACTIVE AGENTS", val: `${agents.filter(a => a.status !== "IDLE").length} / ${agents.length}`, color: "text-blue-400" },
+              { icon: TrendingUp, label: "SUCCESS RATE", val: backendOk ? "99.8%" : "—", color: "text-green-400" },
+              { icon: Clock, label: "UPTIME", val: uptimeLabel, color: "text-yellow-400" },
             ].map((stat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08 }}
-                className="bg-black/50 border border-white/8 p-4 rounded-xl hover:border-primary/25 transition-colors relative overflow-hidden group"
-              >
-                <div className="absolute top-3 right-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <stat.icon className={`w-7 h-7 ${stat.color}`} />
-                </div>
+              <motion.div key={i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className="bg-black/50 border border-white/8 p-4 rounded-xl hover:border-primary/25 transition-colors relative overflow-hidden group">
+                <div className="absolute top-3 right-3 opacity-10 group-hover:opacity-20 transition-opacity"><stat.icon className={`w-7 h-7 ${stat.color}`} /></div>
                 <div className="text-[10px] font-mono text-white/30 mb-1 tracking-wider">{stat.label}</div>
                 <div className={`text-xl md:text-2xl font-bold font-mono ${stat.color}`}>{stat.val}</div>
               </motion.div>
             ))}
           </div>
 
-          {/* Quick Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="border border-white/8 bg-black/40 rounded-xl overflow-hidden"
-          >
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="border border-white/8 bg-black/40 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-white/8 bg-white/[0.02] flex items-center justify-between">
               <span className="font-mono font-bold text-sm text-white/70 tracking-wider">&gt; QUICK_ACTIONS</span>
               <Zap className="w-4 h-4 text-primary/40" />
@@ -264,13 +246,7 @@ export default function Dashboard() {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Active Agents */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 }}
-              className="lg:col-span-2 border border-white/8 bg-black/40 rounded-xl overflow-hidden"
-            >
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="lg:col-span-2 border border-white/8 bg-black/40 rounded-xl overflow-hidden">
               <div className="px-4 py-3 border-b border-white/8 bg-white/[0.02] flex items-center justify-between">
                 <span className="font-mono font-bold text-sm text-white/70 tracking-wider">&gt; ACTIVE_AGENTS</span>
                 <span className="text-[10px] font-mono text-white/30">{agents.filter(a => a.status !== "IDLE").length} RUNNING</span>
@@ -280,44 +256,15 @@ export default function Dashboard() {
                   const ToolIcon = agent.tool ? TOOL_ICONS[agent.tool] : null;
                   const toolColor = agent.tool ? TOOL_COLORS[agent.tool] : "";
                   return (
-                    <motion.div
-                      key={agent.id}
-                      initial={{ opacity: 0, scale: 0.97 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.5 + i * 0.1 }}
-                      className="border border-white/8 bg-black/60 p-4 rounded-xl hover:border-primary/20 transition-colors"
-                    >
+                    <motion.div key={agent.id} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 + i * 0.1 }} className="border border-white/8 bg-black/60 p-4 rounded-xl hover:border-primary/20 transition-colors">
                       <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-2">
-                          {ToolIcon && <ToolIcon className={`w-3.5 h-3.5 ${toolColor}`} />}
-                          <span className="font-mono font-bold text-sm text-white">{agent.id}</span>
-                        </div>
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-mono border ${
-                            agent.status === "ACTIVE"
-                              ? "border-primary/50 text-primary bg-primary/10"
-                              : agent.status === "PROCESSING"
-                              ? "border-blue-400/50 text-blue-400 bg-blue-400/10"
-                              : "border-white/15 text-white/30"
-                          }`}
-                        >
-                          {agent.status}
-                        </span>
+                        <div className="flex items-center gap-2">{ToolIcon && <ToolIcon className={`w-3.5 h-3.5 ${toolColor}`} />}<span className="font-mono font-bold text-sm text-white">{agent.id}</span></div>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono border ${agent.status === "ACTIVE" ? "border-primary/50 text-primary bg-primary/10" : agent.status === "PROCESSING" ? "border-blue-400/50 text-blue-400 bg-blue-400/10" : "border-white/15 text-white/30"}`}>{agent.status}</span>
                       </div>
                       <div className="text-xs text-white/40 mb-3 font-mono">{agent.task}</div>
                       <div className="space-y-1.5">
-                        <div className="flex justify-between text-[10px] font-mono text-white/30">
-                          <span>CPU LOAD</span>
-                          <span className={agent.load > 80 ? "text-red-400" : "text-primary/60"}>{agent.load}%</span>
-                        </div>
-                        <div className="h-1 w-full bg-white/8 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${agent.load}%` }}
-                            transition={{ duration: 1, ease: "easeOut", delay: 0.6 + i * 0.1 }}
-                            className={`h-full rounded-full ${agent.load > 80 ? "bg-red-500" : "bg-primary"}`}
-                          />
-                        </div>
+                        <div className="flex justify-between text-[10px] font-mono text-white/30"><span>CPU LOAD</span><span className={agent.load > 80 ? "text-red-400" : "text-primary/60"}>{agent.load}%</span></div>
+                        <div className="h-1 w-full bg-white/8 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${agent.load}%` }} transition={{ duration: 1, ease: "easeOut", delay: 0.6 + i * 0.1 }} className={`h-full rounded-full ${agent.load > 80 ? "bg-red-500" : "bg-primary"}`} /></div>
                       </div>
                     </motion.div>
                   );
@@ -325,13 +272,7 @@ export default function Dashboard() {
               </div>
             </motion.div>
 
-            {/* System Logs */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55 }}
-              className="border border-white/8 bg-black/40 rounded-xl overflow-hidden flex flex-col min-h-56 lg:min-h-0"
-            >
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="border border-white/8 bg-black/40 rounded-xl overflow-hidden flex flex-col min-h-56 lg:min-h-0">
               <div className="px-4 py-3 border-b border-white/8 bg-white/[0.02] flex items-center justify-between">
                 <span className="font-mono font-bold text-sm text-white/70 tracking-wider">&gt; SYS_LOGS</span>
                 <Terminal className="w-3.5 h-3.5 text-white/20" />
@@ -339,53 +280,27 @@ export default function Dashboard() {
               <div className="flex-1 p-3 overflow-y-auto text-[11px] space-y-1.5 flex flex-col justify-end font-mono">
                 <AnimatePresence initial={false}>
                   {logs.map((log, i) => (
-                    <motion.div
-                      key={log + i}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className={
-                        log.includes("[SYS]") ? "text-primary/60" :
-                        log.includes("[TOOL]") ? "text-blue-400/70" :
-                        log.includes("[AGENT]") ? "text-white/50" :
-                        log.includes("[NET]") ? "text-purple-400/70" :
-                        "text-white/30"
-                      }
-                    >
+                    <motion.div key={log + i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} className={log.includes("[SYS]") ? "text-primary/60" : log.includes("[TOOL]") ? "text-blue-400/70" : log.includes("[AGENT]") ? "text-white/50" : log.includes("[NET]") ? "text-purple-400/70" : "text-white/30"}>
                       {log}
                     </motion.div>
                   ))}
                 </AnimatePresence>
-                <div className="flex items-center gap-1.5 mt-1 text-primary/40">
-                  <span>&gt;</span>
-                  <div className="w-1.5 h-3.5 bg-primary/60 animate-pulse" />
-                </div>
+                <div className="flex items-center gap-1.5 mt-1 text-primary/40"><span>&gt;</span><div className="w-1.5 h-3.5 bg-primary/60 animate-pulse" /></div>
               </div>
             </motion.div>
           </div>
 
-          {/* Network Throughput */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.65 }}
-            className="border border-white/8 bg-black/40 rounded-xl p-4"
-          >
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }} className="border border-white/8 bg-black/40 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="font-mono text-xs text-white/30 tracking-wider">NETWORK_THROUGHPUT</span>
               <span className="font-mono text-xs text-primary/40">LIVE</span>
             </div>
             <div className="flex items-end gap-px h-14">
               {Array.from({ length: 64 }).map((_, i) => (
-                <motion.div
-                  key={i}
-                  animate={{ height: ["15%", "85%", "25%", "100%", "45%", "60%"][Math.floor(Math.random() * 6)] }}
-                  transition={{ duration: 1.2 + Math.random() * 2, repeat: Infinity, repeatType: "reverse", delay: Math.random() * 2 }}
-                  className="flex-1 bg-primary/50 rounded-t-sm"
-                />
+                <motion.div key={i} animate={{ height: ["15%", "85%", "25%", "100%", "45%", "60%"][Math.floor(Math.random() * 6)] }} transition={{ duration: 1.2 + Math.random() * 2, repeat: Infinity, repeatType: "reverse", delay: Math.random() * 2 }} className="flex-1 bg-primary/50 rounded-t-sm" />
               ))}
             </div>
           </motion.div>
-
         </div>
       </main>
     </div>
