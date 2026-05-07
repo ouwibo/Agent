@@ -8,7 +8,7 @@ type ZoModel = {
   is_byok?: boolean;
 };
 
-const DEFAULT_MODEL = "zo:openai/gpt-5.4-mini";
+const PUBLIC_MODEL_PATTERNS = [/\/gpt-5\.4-mini$/i, /\/glm-5$/i, /kimi/i];
 
 function cleanLabel(label: string) {
   return label.replace(/^Zo[\s·:-]+/i, "").trim();
@@ -27,19 +27,11 @@ function fallbackLabel(modelName: string) {
   const prettyName = rawName || vendor;
 
   if (/^gpt-/i.test(prettyName)) return prettyName.replace(/^gpt-/i, "GPT-").replace(/-/g, " ");
+  if (/^claude-/i.test(prettyName)) return prettyName.replace(/^claude-/i, "Claude ").replace(/-/g, " ");
+  if (/^gemini-/i.test(prettyName)) return prettyName.replace(/^gemini-/i, "Gemini ").replace(/-/g, " ");
   if (/^glm-/i.test(prettyName)) return prettyName.replace(/^glm-/i, "GLM ").replace(/-/g, " ");
-  if (/^kimi/i.test(prettyName)) return prettyName.replace(/^kimi/i, "Kimi ").replace(/-/g, " ");
+  if (/^minimax-/i.test(prettyName)) return prettyName.replace(/^minimax-/i, "MiniMax ").replace(/-/g, " ");
   return titleCase(prettyName);
-}
-
-function isPublicModel(modelName: string) {
-  const normalized = modelName.toLowerCase();
-  return (
-    normalized === DEFAULT_MODEL.toLowerCase() ||
-    /\/gpt-5\.4-mini$/i.test(modelName) ||
-    /\/glm-5$/i.test(modelName) ||
-    /kimi/i.test(modelName)
-  );
 }
 
 function toDisplayModel(model: ZoModel) {
@@ -54,14 +46,10 @@ function json(res: any, status: number, body: unknown) {
 }
 
 export default async function handler(req: any, res: any) {
-  if (req.method !== "GET") {
-    return json(res, 405, { error: "Method not allowed" });
-  }
+  if (req.method !== "GET") return json(res, 405, { error: "Method not allowed" });
 
   const apiKey = process.env.ZO_API_KEY;
-  if (!apiKey) {
-    return json(res, 401, { error: "ZO_API_KEY is not configured on the server" });
-  }
+  if (!apiKey) return json(res, 401, { error: "ZO_API_KEY is not configured on the server" });
 
   try {
     const upstream = await fetch("https://api.zo.computer/models/available", {
@@ -79,17 +67,17 @@ export default async function handler(req: any, res: any) {
     }
 
     const models = Array.isArray(data?.models) ? (data.models as ZoModel[]) : [];
-    const cleanedModels = models.map(toDisplayModel).filter((model) => model.type === "free" && isPublicModel(model.model_name));
+    const publicModels = models.filter((model) => PUBLIC_MODEL_PATTERNS.some((pattern) => pattern.test(model.model_name)));
+    const cleanedModels = publicModels.map(toDisplayModel);
 
     return json(res, 200, {
       ok: true,
       models: cleanedModels,
       recommendedModel:
-        cleanedModels.find((m) => m.model_name === DEFAULT_MODEL)?.model_name ||
-        cleanedModels.find((m) => /\/glm-5$/i.test(m.model_name))?.model_name ||
-        cleanedModels.find((m) => /kimi/i.test(m.model_name))?.model_name ||
-        cleanedModels[0]?.model_name ||
-        DEFAULT_MODEL,
+        publicModels.find((m) => m.model_name === "zo:openai/gpt-5.4-mini")?.model_name ||
+        publicModels.find((m) => m.model_name === "zo:zai/glm-5")?.model_name ||
+        publicModels[0]?.model_name ||
+        "zo:openai/gpt-5.4-mini",
     });
   } catch (error: any) {
     return json(res, 500, {

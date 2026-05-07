@@ -51,7 +51,7 @@ const CONVERSATION_STORAGE_KEY = "ouwibo_zo_conversation";
 const FALLBACK_MODELS: ZoModel[] = [
   { model_name: "zo:openai/gpt-5.4-mini", label: "GPT-5.4 mini", vendor: "OpenAI", type: "free", context_window: 400000, is_byok: false },
   { model_name: "zo:zai/glm-5", label: "GLM 5", vendor: "Z.AI", type: "free", context_window: 202752, is_byok: false },
-  { model_name: "zo:google/kimi-k2", label: "Kimi K2", vendor: "Moonshot AI", type: "free", context_window: 200000, is_byok: false },
+  { model_name: "kimi:kimi-k2", label: "Kimi K2", vendor: "Moonshot AI", type: "free", context_window: 200000, is_byok: false },
 ];
 
 const QUICK_PROMPTS = [
@@ -83,13 +83,8 @@ function Badge({ children, tone = "default" }: { children: React.ReactNode; tone
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
-    >
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
         <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-black/60 shadow-[0_0_10px_rgba(0,255,65,0.18)]">
           <img src="/logo.png" alt="OUWIBO" className="h-full w-full object-cover" style={{ objectPosition: "center 15%" }} />
@@ -121,7 +116,6 @@ export default function AgentPage() {
   const [model, setModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || "zo:openai/gpt-5.4-mini");
   const [conversationId, setConversationId] = useState(() => localStorage.getItem(CONVERSATION_STORAGE_KEY) || "");
   const [streamConversationId, setStreamConversationId] = useState<string | null>(null);
-
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -156,7 +150,6 @@ export default function AgentPage() {
 
   const serverHasAiKey = !!health?.serverKeys?.ai;
   const canSend = serverHasAiKey && !!model && !loading;
-
   const selectedModel = useMemo(() => models.find((item) => item.model_name === model) || models[0], [model, models]);
 
   const sendMessage = useCallback(async (text?: string) => {
@@ -176,7 +169,6 @@ export default function AgentPage() {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ input: prompt, conversation_id: conversationId, model_name: model }),
       });
-
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
         throw new Error(err.error || "Server error");
@@ -306,9 +298,7 @@ export default function AgentPage() {
         <div className="flex-1 overflow-y-auto p-3">
           <p className="mb-2 px-2 py-1 text-[10px] tracking-[0.28em] text-white/20 font-mono">QUICK PROMPTS</p>
           <div className="space-y-1.5">
-            {QUICK_PROMPTS.map((item) => (
-              <button key={item} onClick={() => sendMessage(item)} disabled={!canSend} className="w-full rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2 text-left font-mono text-[11px] leading-relaxed text-white/35 transition-all hover:border-primary/25 hover:bg-primary/8 hover:text-white/70 disabled:opacity-20">{item}</button>
-            ))}
+            {QUICK_PROMPTS.map((item) => (<button key={item} onClick={() => sendMessage(item)} disabled={!canSend} className="w-full rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2 text-left font-mono text-[11px] leading-relaxed text-white/35 transition-all hover:border-primary/25 hover:bg-primary/8 hover:text-white/70 disabled:opacity-20">{item}</button>))}
           </div>
         </div>
       </aside>
@@ -343,9 +333,7 @@ export default function AgentPage() {
                   {serverHasAiKey ? <Badge tone="green">API KEY ACTIVE</Badge> : <Badge tone="amber">SET ZO_API_KEY</Badge>}
                 </div>
                 <div className="grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2">
-                  {QUICK_PROMPTS.slice(0, 4).map((item) => (
-                    <button key={item} onClick={() => sendMessage(item)} disabled={!canSend} className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3 text-left text-[11px] leading-relaxed text-white/35 transition-all hover:border-primary/25 hover:bg-primary/8 hover:text-white/70 disabled:opacity-20">{item}</button>
-                  ))}
+                  {QUICK_PROMPTS.slice(0, 4).map((item) => (<button key={item} onClick={() => sendMessage(item)} disabled={!canSend} className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3 text-left text-[11px] leading-relaxed text-white/35 transition-all hover:border-primary/25 hover:bg-primary/8 hover:text-white/70 disabled:opacity-20">{item}</button>))}
                 </div>
               </motion.div>
             )}

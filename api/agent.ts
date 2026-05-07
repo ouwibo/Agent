@@ -5,6 +5,7 @@ type ZoStreamEvent = {
 };
 
 const DEFAULT_MODEL = "zo:openai/gpt-5.4-mini";
+const PUBLIC_MODEL_PATTERNS = [/\/gpt-5\.4-mini$/i, /\/glm-5$/i, /kimi/i];
 
 function writeEvent(res: any, event: ZoStreamEvent) {
   res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -27,37 +28,22 @@ function extractInput(body: any) {
   return typeof input === "string" ? input.trim() : "";
 }
 
-function isPublicModel(modelName: string) {
-  const normalized = modelName.toLowerCase();
-  return (
-    normalized === DEFAULT_MODEL.toLowerCase() ||
-    /\/gpt-5\.4-mini$/i.test(modelName) ||
-    /\/glm-5$/i.test(modelName) ||
-    /kimi/i.test(modelName)
-  );
-}
-
 function normalizeModelName(modelName: unknown) {
   if (typeof modelName !== "string") return DEFAULT_MODEL;
   const trimmed = modelName.trim();
-  return trimmed && isPublicModel(trimmed) ? trimmed : DEFAULT_MODEL;
+  if (!trimmed) return DEFAULT_MODEL;
+  return PUBLIC_MODEL_PATTERNS.some((pattern) => pattern.test(trimmed)) ? trimmed : DEFAULT_MODEL;
 }
 
 export default async function handler(req: any, res: any) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const apiKey = process.env.ZO_API_KEY;
-  if (!apiKey) {
-    return res.status(401).json({ error: "ZO_API_KEY is not configured on the server" });
-  }
+  if (!apiKey) return res.status(401).json({ error: "ZO_API_KEY is not configured on the server" });
 
   const body = extractBody(req);
   const input = extractInput(body);
-  if (!input) {
-    return res.status(400).json({ error: "Message is required" });
-  }
+  if (!input) return res.status(400).json({ error: "Message is required" });
 
   const modelName = normalizeModelName(body?.model_name ?? body?.model);
   const conversationId =
@@ -80,12 +66,7 @@ export default async function handler(req: any, res: any) {
         Accept: "text/event-stream",
       },
       signal: controller.signal,
-      body: JSON.stringify({
-        input,
-        conversation_id: conversationId,
-        model_name: modelName,
-        stream: true,
-      }),
+      body: JSON.stringify({ input, conversation_id: conversationId, model_name: modelName, stream: true }),
     });
   } catch (error: any) {
     clearTimeout(timeout);
@@ -95,15 +76,11 @@ export default async function handler(req: any, res: any) {
   if (!upstream.ok || !upstream.body) {
     clearTimeout(timeout);
     const errorBody = await upstream.text().catch(() => "");
-    return res.status(upstream.status).json({
-      error: errorBody || `Zo request failed (${upstream.status})`,
-    });
+    return res.status(upstream.status).json({ error: errorBody || `Zo request failed (${upstream.status})` });
   }
 
   const conversationHeader = upstream.headers.get("x-conversation-id");
-  if (conversationHeader) {
-    res.setHeader("x-conversation-id", conversationHeader);
-  }
+  if (conversationHeader) res.setHeader("x-conversation-id", conversationHeader);
 
   res.status(200);
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -119,12 +96,8 @@ export default async function handler(req: any, res: any) {
 
   const finish = () => {
     clearTimeout(timeout);
-    try {
-      writeEvent(res, { type: "done" });
-    } catch {}
-    try {
-      res.end();
-    } catch {}
+    try { writeEvent(res, { type: "done" }); } catch {}
+    try { res.end(); } catch {}
   };
 
   try {
@@ -142,14 +115,9 @@ export default async function handler(req: any, res: any) {
           continue;
         }
 
-        if (!line.startsWith("data: ")) {
-          continue;
-        }
-
+        if (!line.startsWith("data: ")) continue;
         const raw = line.slice(6).trim();
-        if (!raw) {
-          continue;
-        }
+        if (!raw) continue;
 
         let parsed: any = null;
         try {
@@ -159,10 +127,7 @@ export default async function handler(req: any, res: any) {
         }
 
         if (currentEvent === "Error") {
-          writeEvent(res, {
-            type: "error",
-            message: parsed?.message || "Zo returned an error",
-          });
+          writeEvent(res, { type: "error", message: parsed?.message || "Zo returned an error" });
           finish();
           return;
         }
@@ -173,9 +138,7 @@ export default async function handler(req: any, res: any) {
         }
 
         const content = typeof parsed?.content === "string" ? parsed.content : "";
-        if (content) {
-          writeEvent(res, { type: "text", content });
-        }
+        if (content) writeEvent(res, { type: "text", content });
       }
     }
 
