@@ -4,6 +4,8 @@ type ZoStreamEvent = {
   message?: string;
 };
 
+const DEFAULT_MODEL = "zo:openai/gpt-5.4-mini";
+
 function writeEvent(res: any, event: ZoStreamEvent) {
   res.write(`data: ${JSON.stringify(event)}\n\n`);
 }
@@ -25,6 +27,22 @@ function extractInput(body: any) {
   return typeof input === "string" ? input.trim() : "";
 }
 
+function isPublicModel(modelName: string) {
+  const normalized = modelName.toLowerCase();
+  return (
+    normalized === DEFAULT_MODEL.toLowerCase() ||
+    /\/gpt-5\.4-mini$/i.test(modelName) ||
+    /\/glm-5$/i.test(modelName) ||
+    /kimi/i.test(modelName)
+  );
+}
+
+function normalizeModelName(modelName: unknown) {
+  if (typeof modelName !== "string") return DEFAULT_MODEL;
+  const trimmed = modelName.trim();
+  return trimmed && isPublicModel(trimmed) ? trimmed : DEFAULT_MODEL;
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -41,13 +59,7 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: "Message is required" });
   }
 
-  const modelName =
-    typeof body?.model_name === "string" && body.model_name.trim()
-      ? body.model_name.trim()
-      : typeof body?.model === "string" && body.model.trim()
-        ? body.model.trim()
-        : "zo:openai/gpt-5.4-mini";
-
+  const modelName = normalizeModelName(body?.model_name ?? body?.model);
   const conversationId =
     typeof body?.conversation_id === "string" && body.conversation_id.trim()
       ? body.conversation_id.trim()
@@ -55,22 +67,33 @@ export default async function handler(req: any, res: any) {
         ? body.conversationId.trim()
         : undefined;
 
-  const upstream = await fetch("https://api.zo.computer/zo/ask", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-    },
-    body: JSON.stringify({
-      input,
-      conversation_id: conversationId,
-      model_name: modelName,
-      stream: true,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+
+  let upstream: Response;
+  try {
+    upstream = await fetch("https://api.zo.computer/zo/ask", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        input,
+        conversation_id: conversationId,
+        model_name: modelName,
+        stream: true,
+      }),
+    });
+  } catch (error: any) {
+    clearTimeout(timeout);
+    return res.status(500).json({ error: error?.name === "AbortError" ? "Zo request timed out" : error?.message || "Zo request failed" });
+  }
 
   if (!upstream.ok || !upstream.body) {
+    clearTimeout(timeout);
     const errorBody = await upstream.text().catch(() => "");
     return res.status(upstream.status).json({
       error: errorBody || `Zo request failed (${upstream.status})`,
@@ -95,6 +118,7 @@ export default async function handler(req: any, res: any) {
   let currentEvent = "";
 
   const finish = () => {
+    clearTimeout(timeout);
     try {
       writeEvent(res, { type: "done" });
     } catch {}
@@ -157,6 +181,7 @@ export default async function handler(req: any, res: any) {
 
     finish();
   } catch (error: any) {
+    clearTimeout(timeout);
     writeEvent(res, { type: "error", message: error?.message || "Streaming failed" });
     finish();
   }

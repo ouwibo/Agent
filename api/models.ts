@@ -8,6 +8,8 @@ type ZoModel = {
   is_byok?: boolean;
 };
 
+const DEFAULT_MODEL = "zo:openai/gpt-5.4-mini";
+
 function cleanLabel(label: string) {
   return label.replace(/^Zo[\s·:-]+/i, "").trim();
 }
@@ -24,23 +26,20 @@ function fallbackLabel(modelName: string) {
   const [vendor, rawName = ""] = withoutPrefix.split("/");
   const prettyName = rawName || vendor;
 
-  if (/^gpt-/i.test(prettyName)) {
-    return prettyName.replace(/^gpt-/i, "GPT-").replace(/-/g, " ");
-  }
-  if (/^claude-/i.test(prettyName)) {
-    return prettyName.replace(/^claude-/i, "Claude ").replace(/-/g, " ");
-  }
-  if (/^gemini-/i.test(prettyName)) {
-    return prettyName.replace(/^gemini-/i, "Gemini ").replace(/-/g, " ");
-  }
-  if (/^glm-/i.test(prettyName)) {
-    return prettyName.replace(/^glm-/i, "GLM ").replace(/-/g, " ");
-  }
-  if (/^minimax-/i.test(prettyName)) {
-    return prettyName.replace(/^minimax-/i, "MiniMax ").replace(/-/g, " ");
-  }
-
+  if (/^gpt-/i.test(prettyName)) return prettyName.replace(/^gpt-/i, "GPT-").replace(/-/g, " ");
+  if (/^glm-/i.test(prettyName)) return prettyName.replace(/^glm-/i, "GLM ").replace(/-/g, " ");
+  if (/^kimi/i.test(prettyName)) return prettyName.replace(/^kimi/i, "Kimi ").replace(/-/g, " ");
   return titleCase(prettyName);
+}
+
+function isPublicModel(modelName: string) {
+  const normalized = modelName.toLowerCase();
+  return (
+    normalized === DEFAULT_MODEL.toLowerCase() ||
+    /\/gpt-5\.4-mini$/i.test(modelName) ||
+    /\/glm-5$/i.test(modelName) ||
+    /kimi/i.test(modelName)
+  );
 }
 
 function toDisplayModel(model: ZoModel) {
@@ -80,16 +79,17 @@ export default async function handler(req: any, res: any) {
     }
 
     const models = Array.isArray(data?.models) ? (data.models as ZoModel[]) : [];
-    const cleanedModels = models.map(toDisplayModel);
+    const cleanedModels = models.map(toDisplayModel).filter((model) => model.type === "free" && isPublicModel(model.model_name));
 
     return json(res, 200, {
       ok: true,
       models: cleanedModels,
       recommendedModel:
-        models.find((m) => m.model_name === "zo:openai/gpt-5.4-mini")?.model_name ||
-        models.find((m) => m.type === "free")?.model_name ||
-        models[0]?.model_name ||
-        "zo:openai/gpt-5.4-mini",
+        cleanedModels.find((m) => m.model_name === DEFAULT_MODEL)?.model_name ||
+        cleanedModels.find((m) => /\/glm-5$/i.test(m.model_name))?.model_name ||
+        cleanedModels.find((m) => /kimi/i.test(m.model_name))?.model_name ||
+        cleanedModels[0]?.model_name ||
+        DEFAULT_MODEL,
     });
   } catch (error: any) {
     return json(res, 500, {
