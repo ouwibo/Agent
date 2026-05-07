@@ -1,124 +1,97 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "wouter";
 import {
-  Send, Trash2, Bot, User, ArrowLeft, Search,
-  Code2, Globe, ListTodo, ChevronDown, ChevronRight,
-  Settings, X, KeyRound, Loader2, CheckCircle2, Zap, Cpu
+  ArrowLeft,
+  Bot,
+  CheckCircle2,
+  Globe,
+  KeyRound,
+  LayoutDashboard,
+  Loader2,
+  Send,
+  Settings,
+  Trash2,
+  X,
 } from "lucide-react";
 import { MatrixBackground } from "@/components/matrix-background";
-
-interface ToolCall {
-  id: string;
-  tool: string;
-  args: Record<string, unknown>;
-  result?: Record<string, unknown>;
-  status: "running" | "done" | "error";
-}
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  toolCalls?: ToolCall[];
   createdAt: string;
 }
 
-interface ServerStatus {
+interface HealthData {
   ok: boolean;
-  serverKeys?: { openai: boolean; groq: boolean; gemini: boolean };
-  availableProviders?: string[];
+  serverKeys?: { ai?: boolean };
+  defaultModel?: string;
 }
 
-type Provider = "openai" | "groq" | "gemini";
+interface ZoModel {
+  model_name: string;
+  label: string;
+  vendor: string;
+  description?: string | null;
+  type?: string | null;
+  context_window?: number | null;
+  is_byok?: boolean;
+}
+
+interface ModelsResponse {
+  ok: boolean;
+  models: ZoModel[];
+  recommendedModel?: string;
+}
 
 const BACKEND = "/api";
+const MODEL_STORAGE_KEY = "ouwibo_zo_model";
+const CONVERSATION_STORAGE_KEY = "ouwibo_zo_conversation";
 
-const PROVIDERS: Record<Provider, { label: string; model: string; free: boolean; note: string }> = {
-  openai:  { label: "OpenAI GPT-4o-mini", model: "gpt-4o-mini",         free: false, note: "platform.openai.com" },
-  groq:    { label: "Groq · Llama 3 70B",  model: "llama3-70b-8192",    free: true,  note: "console.groq.com" },
-  gemini:  { label: "Google Gemini Flash",  model: "gemini-2.0-flash",   free: true,  note: "aistudio.google.com" },
-};
-
-const QUICK_TASKS = [
-  "Research the latest trends in AI and write a summary",
-  "Write a Python script to scrape product prices from a website",
-  "Create a 30-day machine learning study plan",
-  "Explain how neural networks work with code examples",
-  "Find and compare the top 3 JavaScript frameworks in 2025",
-  "Write a Node.js REST API with JWT authentication",
+const FALLBACK_MODELS: ZoModel[] = [
+  { model_name: "zo:openai/gpt-5.4-mini", label: "GPT-5.4 mini", vendor: "OpenAI", type: "free", context_window: 400000, is_byok: false },
+  { model_name: "zo:zai/glm-5", label: "GLM 5", vendor: "Z.AI", type: "free", context_window: 202752, is_byok: false },
+  { model_name: "zo:minimax/minimax-m2.5", label: "MiniMax 2.5", vendor: "Minimax", type: "free", context_window: 196608, is_byok: false },
+  { model_name: "zo:minimax/minimax-m2.7", label: "MiniMax 2.7", vendor: "Minimax", type: "free", context_window: 205000, is_byok: false },
+  { model_name: "zo:anthropic/claude-sonnet-4-6", label: "Claude Sonnet 4.6", vendor: "Anthropic", type: "subscribers", context_window: 1000000, is_byok: false },
+  { model_name: "zo:anthropic/claude-opus-4-7", label: "Claude Opus 4.7", vendor: "Anthropic", type: "subscribers", context_window: 1000000, is_byok: false },
+  { model_name: "zo:openai/gpt-5.4", label: "GPT-5.4", vendor: "OpenAI", type: "subscribers", context_window: 1000000, is_byok: false },
+  { model_name: "zo:openai/gpt-5.5", label: "GPT-5.5", vendor: "OpenAI", type: "subscribers", context_window: 1050000, is_byok: false },
+  { model_name: "zo:openai/gpt-5.3-codex", label: "GPT-5.3 Codex", vendor: "OpenAI", type: "subscribers", context_window: 1000000, is_byok: false },
+  { model_name: "zo:google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro Preview", vendor: "Google", type: "subscribers", context_window: 1000000, is_byok: false },
 ];
 
-const TOOL_META: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-  search_web:  { icon: Search,   label: "Web Search",  color: "text-blue-400" },
-  write_code:  { icon: Code2,    label: "Write Code",  color: "text-yellow-400" },
-  browse_url:  { icon: Globe,    label: "Browse URL",  color: "text-purple-400" },
-  create_plan: { icon: ListTodo, label: "Create Plan", color: "text-green-400" },
-};
+const QUICK_PROMPTS = [
+  "Bantu saya bikin ringkasan singkat dari topik yang sedang tren",
+  "Jelaskan sesuatu dengan gaya yang sederhana dan langsung",
+  "Buat ide fitur untuk website AI publik",
+  "Tulis prompt yang lebih tajam untuk AI agent",
+  "Analisis halaman web dan beri poin pentingnya",
+  "Buat rencana langkah demi langkah untuk task kompleks",
+];
 
-function ToolCallCard({ tc }: { tc: ToolCall }) {
-  const [expanded, setExpanded] = useState(false);
-  const meta = TOOL_META[tc.tool] || { icon: Zap, label: tc.tool, color: "text-primary" };
-  const Icon = meta.icon;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="rounded-xl border border-white/8 bg-white/[0.03] overflow-hidden text-xs"
-    >
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/5 transition-colors text-left"
-      >
-        <div className={`flex items-center gap-1.5 flex-1 min-w-0 ${meta.color}`}>
-          {tc.status === "running"
-            ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-            : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
-          <Icon className="w-3.5 h-3.5 shrink-0" />
-          <span className="font-mono font-medium truncate">{meta.label}</span>
-        </div>
-        <span className="text-white/20 text-[10px] font-mono shrink-0">
-          {tc.status === "running" ? "executing..." : "done"}
-        </span>
-        {tc.status === "done" && (
-          expanded
-            ? <ChevronDown className="w-3 h-3 text-white/30 shrink-0" />
-            : <ChevronRight className="w-3 h-3 text-white/30 shrink-0" />
-        )}
-      </button>
-
-      {tc.args && (
-        <div className="px-3 pb-2 font-mono text-[10px] border-t border-white/5 text-white/25">
-          {Object.entries(tc.args).map(([k, v]) => (
-            <div key={k} className="flex gap-1.5 mt-1 min-w-0">
-              <span className="text-primary/50 shrink-0">{k}:</span>
-              <span className="truncate">{String(v).slice(0, 90)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <AnimatePresence>
-        {expanded && tc.result && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="border-t border-white/8 px-3 py-2 bg-black/30"
-          >
-            <pre className="text-white/35 font-mono text-[10px] leading-relaxed whitespace-pre-wrap max-h-32 overflow-y-auto">
-              {JSON.stringify(tc.result, null, 2)}
-            </pre>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
+function formatTokens(value?: number | null) {
+  if (!value) return "-";
+  return value >= 1000000 ? `${Math.round(value / 100000) / 10}M` : `${Math.round(value / 1000)}k`;
 }
 
-function MessageBubble({ msg }: { msg: Message }) {
-  const isUser = msg.role === "user";
+function Badge({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "green" | "blue" | "amber" }) {
+  const cls =
+    tone === "green"
+      ? "bg-green-500/15 text-green-400 border-green-500/20"
+      : tone === "blue"
+        ? "bg-primary/15 text-primary border-primary/20"
+        : tone === "amber"
+          ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20"
+          : "bg-white/5 text-white/55 border-white/10";
+
+  return <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-mono tracking-wide ${cls}`}>{children}</span>;
+}
+
+function MessageBubble({ message }: { message: Message }) {
+  const isUser = message.role === "user";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -126,32 +99,27 @@ function MessageBubble({ msg }: { msg: Message }) {
       className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
-        <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/40 shadow-[0_0_8px_rgba(0,255,65,0.25)] shrink-0 mt-0.5">
-          <img src="/logo.png" alt="OUWIBO" className="w-full h-full object-cover" style={{ objectPosition: "center 15%" }} />
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-black/60 shadow-[0_0_10px_rgba(0,255,65,0.18)]">
+          <img src="/logo.png" alt="OUWIBO" className="h-full w-full object-cover" style={{ objectPosition: "center 15%" }} />
         </div>
       )}
-      <div className={`max-w-[85%] md:max-w-[72%] space-y-2 flex flex-col ${isUser ? "items-end" : "items-start"}`}>
-        {msg.toolCalls && msg.toolCalls.length > 0 && (
-          <div className="w-full space-y-1.5">
-            {msg.toolCalls.map(tc => <ToolCallCard key={tc.id} tc={tc} />)}
-          </div>
-        )}
-        {msg.content && (
-          <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+      <div className={`max-w-[86%] md:max-w-[72%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-2`}>
+        <div
+          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
             isUser
-              ? "bg-primary text-black font-medium rounded-br-sm"
-              : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
-          }`}>
-            <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
-          </div>
-        )}
-        <span className="text-[10px] text-white/20 font-mono px-1">
-          {new Date(msg.createdAt).toLocaleTimeString()}
+              ? "rounded-br-sm bg-primary text-black font-medium"
+              : "rounded-bl-sm border border-white/10 bg-white/5 text-white/90"
+          }`}
+        >
+          <pre className="whitespace-pre-wrap font-sans">{message.content}</pre>
+        </div>
+        <span className="px-1 font-mono text-[10px] text-white/20">
+          {new Date(message.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>
       {isUser && (
-        <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 mt-0.5">
-          <User className="w-4 h-4 text-white/60" />
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10">
+          <span className="text-xs font-semibold text-white/60">U</span>
         </div>
       )}
     </motion.div>
@@ -161,96 +129,107 @@ function MessageBubble({ msg }: { msg: Message }) {
 export default function AgentPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
-  const [provider, setProvider] = useState<Provider>(() => (localStorage.getItem("ouwibo_provider") as Provider) || "openai");
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem(`ouwibo_key_${localStorage.getItem("ouwibo_provider") || "openai"}`) || "");
+  const [loading, setLoading] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
-  const [streamingMsg, setStreamingMsg] = useState<{ content: string; toolCalls: ToolCall[] } | null>(null);
+  const [health, setHealth] = useState<HealthData | null>(null);
+  const [models, setModels] = useState<ZoModel[]>(FALLBACK_MODELS);
+  const [model, setModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || "zo:openai/gpt-5.4-mini");
+  const [conversationId, setConversationId] = useState(() => localStorage.getItem(CONVERSATION_STORAGE_KEY) || "");
+  const [streamConversationId, setStreamConversationId] = useState<string | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingMsg]);
+  }, [messages, streamingText]);
 
   useEffect(() => {
-    fetch(`${BACKEND}/health`)
-      .then(r => r.json())
-      .then(d => setServerStatus(d))
-      .catch(() => setServerStatus({ ok: false }));
+    fetch(`${BACKEND}/health`, { headers: { Accept: "application/json" } })
+      .then((res) => res.json())
+      .then((data) => setHealth(data))
+      .catch(() => setHealth({ ok: false, serverKeys: { ai: false } }));
+
+    fetch(`${BACKEND}/models`, { headers: { Accept: "application/json" } })
+      .then(async (res) => {
+        const data = (await res.json().catch(() => null)) as ModelsResponse | null;
+        if (!res.ok || !data?.models?.length) throw new Error("no models");
+        setModels(data.models);
+        const nextModel = data.recommendedModel || data.models.find((m) => m.type === "free")?.model_name || data.models[0].model_name;
+        setModel((prev) => (data.models.some((m) => m.model_name === prev) ? prev : nextModel));
+      })
+      .catch(() => setModels(FALLBACK_MODELS));
   }, []);
 
-  const loadKeyForProvider = (p: Provider) => {
-    return localStorage.getItem(`ouwibo_key_${p}`) || "";
-  };
+  useEffect(() => {
+    localStorage.setItem(MODEL_STORAGE_KEY, model);
+  }, [model]);
 
-  const handleProviderChange = (p: Provider) => {
-    setProvider(p);
-    localStorage.setItem("ouwibo_provider", p);
-    setApiKey(loadKeyForProvider(p));
-  };
+  useEffect(() => {
+    if (conversationId) localStorage.setItem(CONVERSATION_STORAGE_KEY, conversationId);
+    else localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+  }, [conversationId]);
 
-  const saveApiKey = () => {
-    const key = apiKeyInput.trim();
-    if (key) {
-      setApiKey(key);
-      localStorage.setItem(`ouwibo_key_${provider}`, key);
-    }
-    setShowSettings(false);
-    setApiKeyInput("");
-  };
+  const serverHasAiKey = !!health?.serverKeys?.ai;
+  const canSend = serverHasAiKey && !!model && !loading;
 
-  const clearApiKey = () => {
-    setApiKey("");
-    localStorage.removeItem(`ouwibo_key_${provider}`);
-  };
-
-  // Check if this provider has a server-side key
-  const serverHasKey = serverStatus?.serverKeys?.[provider] ?? false;
-  const userHasKey = !!apiKey;
-  const canSend = serverHasKey || userHasKey;
+  const selectedModel = useMemo(
+    () => models.find((item) => item.model_name === model) || models[0],
+    [model, models],
+  );
 
   const sendMessage = useCallback(async (text?: string) => {
-    const userInput = (text || input).trim();
-    if (!userInput || streaming) return;
+    const prompt = (text || input).trim();
+    if (!prompt || loading || !canSend) return;
 
-    const userMsg: Message = {
+    const userMessage: Message = {
       id: `u-${Date.now()}`,
       role: "user",
-      content: userInput,
+      content: prompt,
       createdAt: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setStreaming(true);
-
-    const history = messages.map(m => ({ role: m.role, content: m.content }));
-    let liveContent = "";
-    let liveTools: ToolCall[] = [];
-    setStreamingMsg({ content: "", toolCalls: [] });
+    setLoading(true);
+    setStreamingText("");
+    setStreamConversationId(null);
 
     try {
-      const res = await fetch(`${BACKEND}/agent`, {
+      const response = await fetch(`${BACKEND}/agent`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userInput, history, apiKey, provider }),
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          input: prompt,
+          conversation_id: conversationId,
+          model_name: model,
+        }),
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
         throw new Error(err.error || "Server error");
       }
 
-      const reader = res.body!.getReader();
+      const nextConversationId = response.headers.get("x-conversation-id");
+      if (nextConversationId) {
+        setStreamConversationId(nextConversationId);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Streaming response unavailable");
+
       const decoder = new TextDecoder();
       let buffer = "";
+      let finalText = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
@@ -259,168 +238,143 @@ export default function AgentPage() {
           if (!line.startsWith("data: ")) continue;
           const raw = line.slice(6).trim();
           if (!raw) continue;
-          let evt: Record<string, unknown>;
-          try { evt = JSON.parse(raw); } catch { continue; }
 
-          if (evt.type === "text") {
-            liveContent += evt.content as string;
-            setStreamingMsg({ content: liveContent, toolCalls: [...liveTools] });
-          } else if (evt.type === "tool_start") {
-            const tc: ToolCall = {
-              id: (evt.id as string) || `tc-${Date.now()}`,
-              tool: evt.tool as string,
-              args: evt.args as Record<string, unknown>,
-              status: "running",
-            };
-            liveTools = [...liveTools, tc];
-            liveContent = "";
-            setStreamingMsg({ content: "", toolCalls: [...liveTools] });
-          } else if (evt.type === "tool_end") {
-            liveTools = liveTools.map(tc =>
-              tc.id === evt.id ? { ...tc, status: "done" as const, result: evt.result as Record<string, unknown> } : tc
-            );
-            setStreamingMsg({ content: liveContent, toolCalls: [...liveTools] });
-          } else if (evt.type === "error") {
-            throw new Error(evt.message as string);
-          } else if (evt.type === "done") {
+          let evt: { type?: string; content?: string; message?: string } | null = null;
+          try {
+            evt = JSON.parse(raw);
+          } catch {
+            continue;
+          }
+
+          if (evt?.type === "text" && evt.content) {
+            finalText += evt.content;
+            setStreamingText(finalText);
+          }
+
+          if (evt?.type === "error") {
+            throw new Error(evt.message || "AI returned an error");
+          }
+
+          if (evt?.type === "done") {
             break;
           }
         }
       }
 
-      setMessages(prev => [...prev, {
-        id: `a-${Date.now()}`,
-        role: "assistant",
-        content: liveContent,
-        toolCalls: liveTools.length > 0 ? liveTools : undefined,
-        createdAt: new Date().toISOString(),
-      }]);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      setMessages(prev => [...prev, {
-        id: `e-${Date.now()}`,
-        role: "assistant",
-        content: `⚠️ ${msg}`,
-        createdAt: new Date().toISOString(),
-      }]);
-    } finally {
-      setStreaming(false);
-      setStreamingMsg(null);
-    }
-  }, [input, streaming, messages, apiKey, provider]);
+      if (streamConversationId) {
+        setConversationId(streamConversationId);
+      } else if (nextConversationId) {
+        setConversationId(nextConversationId);
+      }
 
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: "assistant",
+          content: finalText.trim() || "(tidak ada output)",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `e-${Date.now()}`,
+          role: "assistant",
+          content: `⚠️ ${message}`,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    } finally {
+      setLoading(false);
+      setStreamingText("");
+      setStreamConversationId(null);
+    }
+  }, [canSend, conversationId, input, loading, model, streamConversationId]);
+
+  const handleKey = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       sendMessage();
     }
   };
 
-  const providerInfo = PROVIDERS[provider];
+  const modelLabel = selectedModel?.label || model.replace(/^zo:/i, "");
 
   return (
-    <div className="flex h-screen bg-black text-white overflow-hidden relative">
+    <div className="relative flex h-screen overflow-hidden bg-black text-white">
       <MatrixBackground />
 
-      {/* Settings Modal */}
       <AnimatePresence>
         {showSettings && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-6"
-            onClick={e => e.target === e.currentTarget && setShowSettings(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6"
+            onClick={(event) => event.target === event.currentTarget && setShowSettings(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 12 }}
-              className="bg-black border border-white/15 rounded-2xl p-6 w-full max-w-md"
+              initial={{ opacity: 0, y: 14, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 14, scale: 0.98 }}
+              className="w-full max-w-2xl rounded-2xl border border-white/10 bg-black p-5 shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="font-bold text-lg text-white">Settings</h2>
-                <button onClick={() => setShowSettings(false)} className="text-white/40 hover:text-white transition-colors">
-                  <X className="w-5 h-5" />
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Model</h2>
+                  <p className="mt-1 text-xs text-white/35">Pilih model yang tersedia untuk akun kamu.</p>
+                </div>
+                <button onClick={() => setShowSettings(false)} className="text-white/40 transition-colors hover:text-white">
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              {/* Provider selector */}
-              <div className="mb-5">
-                <label className="text-xs font-mono text-white/40 mb-2 block tracking-wider">AI PROVIDER</label>
-                <div className="space-y-2">
-                  {(Object.keys(PROVIDERS) as Provider[]).map(p => {
-                    const info = PROVIDERS[p];
-                    const sKey = serverStatus?.serverKeys?.[p];
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => handleProviderChange(p)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
-                          provider === p
-                            ? "border-primary/50 bg-primary/10 text-white"
-                            : "border-white/10 bg-white/3 text-white/50 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        <Cpu className={`w-4 h-4 shrink-0 ${provider === p ? "text-primary" : "text-white/30"}`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium">{info.label}</div>
-                          <div className="text-[11px] font-mono text-white/30 mt-0.5">{info.note}</div>
+              <div className="grid max-h-[55vh] gap-2 overflow-y-auto pr-1 md:grid-cols-2">
+                {models.map((item) => {
+                  const active = item.model_name === model;
+                  return (
+                    <button
+                      key={item.model_name}
+                      onClick={() => {
+                        setModel(item.model_name);
+                        setShowSettings(false);
+                      }}
+                      className={`rounded-xl border p-3 text-left transition-all ${
+                        active ? "border-primary/50 bg-primary/10" : "border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
+                      }`}
+                    >
+                      <div className="mb-2 flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium text-white">{item.label}</div>
+                          <div className="truncate text-[11px] font-mono text-white/28">{item.vendor}</div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {info.free && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-green-500/15 text-green-400 font-mono border border-green-500/25">FREE</span>
-                          )}
-                          {sKey && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/15 text-primary font-mono border border-primary/25">SERVER</span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                        {active ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : <Globe className="h-4 w-4 shrink-0 text-white/20" />}
+                      </div>
+                      <p className="mb-3 text-xs leading-relaxed text-white/38">{item.description || item.vendor}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.type === "free" && <Badge tone="green">FREE</Badge>}
+                        {item.type === "subscribers" && <Badge tone="amber">PREMIUM</Badge>}
+                        {item.is_byok && <Badge tone="blue">BYOK</Badge>}
+                        <Badge>{formatTokens(item.context_window)}</Badge>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* API Key input */}
-              <div className="mb-5">
-                <label className="text-xs font-mono text-white/40 mb-2 block tracking-wider">
-                  {provider.toUpperCase()} API KEY
-                  {serverHasKey && <span className="text-primary/60 ml-2">(server key active — optional)</span>}
-                </label>
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={e => setApiKeyInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && saveApiKey()}
-                  placeholder={userHasKey ? "••••••••••••••••" : serverHasKey ? "Using server key..." : `Your ${providerInfo.label} key...`}
-                  className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-white/20 focus:outline-none focus:border-primary/50 transition-colors"
-                />
-                <p className="text-[11px] text-white/20 mt-2 font-mono">
-                  Get your key at {providerInfo.note} · Stored locally in browser.
-                </p>
-              </div>
-
-              {userHasKey && (
-                <div className="flex items-center gap-2 p-3 rounded-xl border border-primary/20 bg-primary/5 mb-4">
-                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-sm text-primary/80 font-mono">Key saved for {providerInfo.label}</span>
-                  <button onClick={clearApiKey} className="ml-auto text-xs text-red-400/70 hover:text-red-400 transition-colors font-mono">
-                    remove
-                  </button>
-                </div>
-              )}
-
-              <div className="flex gap-2">
+              <div className="mt-5 flex gap-2">
                 <button
-                  onClick={saveApiKey}
-                  disabled={!apiKeyInput.trim()}
-                  className="flex-1 bg-primary text-black font-semibold py-2.5 rounded-xl text-sm disabled:opacity-30 transition-opacity hover:opacity-90"
+                  onClick={() => setModel(health?.defaultModel || "zo:openai/gpt-5.4-mini")}
+                  className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/5"
                 >
-                  Save Key
+                  Reset default
                 </button>
                 <button
                   onClick={() => setShowSettings(false)}
-                  className="flex-1 border border-white/12 text-white/50 font-medium py-2.5 rounded-xl text-sm hover:bg-white/5 transition-colors"
+                  className="ml-auto rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-black transition-opacity hover:opacity-90"
                 >
                   Close
                 </button>
@@ -430,148 +384,122 @@ export default function AgentPage() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="hidden md:flex w-64 flex-col border-r border-white/8 bg-black/90 backdrop-blur-xl relative z-10">
-          <div className="p-4 border-b border-white/8">
-            <Link href="/dashboard" className="flex items-center gap-2 text-white/50 hover:text-white transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-              <span className="font-bold text-base text-white tracking-wider">OUWIBO<span className="text-primary">_</span></span>
-            </Link>
+      <aside className="hidden w-72 flex-col border-r border-white/8 bg-black/90 backdrop-blur-xl md:flex">
+        <div className="border-b border-white/8 p-4">
+          <Link href="/dashboard" className="flex items-center gap-2 text-white/50 transition-colors hover:text-white">
+            <ArrowLeft className="h-4 w-4" />
+            <span className="font-bold tracking-wider text-white">OUWIBO<span className="text-primary">_</span></span>
+          </Link>
+        </div>
+
+        <div className="space-y-2 border-b border-white/6 p-4">
+          <div className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${health?.ok ? "bg-primary" : "bg-red-500"} animate-pulse`} />
+            <span className="text-xs font-mono text-white/35">{health?.ok ? "SERVER ONLINE" : "SERVER OFFLINE"}</span>
           </div>
-
-          {/* Status */}
-          <div className="p-4 border-b border-white/6 space-y-2">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${serverStatus?.ok ? "bg-primary animate-pulse" : "bg-red-500"}`} />
-              <span className="text-xs font-mono text-white/35">
-                {serverStatus?.ok ? "SERVER ONLINE" : "SERVER OFFLINE"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${canSend ? "bg-primary animate-pulse" : "bg-yellow-500"}`} />
-              <span className="text-xs font-mono text-white/35 truncate">
-                {serverHasKey ? `${provider.toUpperCase()} (SERVER)` : userHasKey ? `${provider.toUpperCase()} (USER)` : "NO API KEY"}
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${serverHasAiKey ? "bg-primary" : "bg-yellow-500"} animate-pulse`} />
+            <span className="text-xs font-mono text-white/35">{serverHasAiKey ? "API KEY ACTIVE" : "SET ZO_API_KEY"}</span>
           </div>
+        </div>
 
-          {/* Actions */}
-          <div className="p-3 space-y-2">
-            <button
-              onClick={() => setShowSettings(true)}
-              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/10 bg-white/3 text-white/50 hover:bg-white/8 hover:text-white transition-all text-sm font-medium"
-            >
-              <Settings className="w-4 h-4" />
-              Settings · {providerInfo.label.split("·")[0].trim()}
-            </button>
-            <button
-              onClick={() => { setMessages([]); setStreamingMsg(null); }}
-              disabled={streaming || messages.length === 0}
-              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400/50 hover:bg-red-500/10 hover:text-red-400 transition-all text-sm font-medium disabled:opacity-25"
-            >
-              <Trash2 className="w-4 h-4" />
-              Clear Chat
-            </button>
-          </div>
+        <div className="p-3 space-y-2">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/3 px-3 py-2.5 text-sm font-medium text-white/55 transition-all hover:bg-white/8 hover:text-white"
+          >
+            <Settings className="h-4 w-4" />
+            Model · {modelLabel}
+          </button>
+          <button
+            onClick={() => {
+              setMessages([]);
+              setConversationId("");
+              setStreamingText("");
+              localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+            }}
+            disabled={loading && !messages.length}
+            className="flex w-full items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-sm font-medium text-red-400/55 transition-all hover:bg-red-500/10 hover:text-red-400 disabled:opacity-25"
+          >
+            <Trash2 className="h-4 w-4" />
+            Clear Chat
+          </button>
+        </div>
 
-          {/* Quick tasks */}
-          <div className="flex-1 overflow-y-auto p-3">
-            <p className="text-[10px] font-mono text-white/20 px-2 py-1 tracking-widest mb-2">QUICK TASKS</p>
-            <div className="space-y-1.5">
-              {QUICK_TASKS.map((task, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendMessage(task)}
-                  disabled={streaming || !canSend}
-                  className="w-full text-left px-3 py-2 rounded-lg border border-white/6 bg-white/2 text-[11px] text-white/35 hover:text-white/70 hover:bg-primary/8 hover:border-primary/25 transition-all font-mono leading-relaxed disabled:opacity-20"
-                >
-                  {task}
-                </button>
-              ))}
-            </div>
-          </div>
-        </aside>
-
-        {/* Main chat area */}
-        <div className="flex-1 flex flex-col relative z-10 min-w-0">
-          {/* Header */}
-          <header className="flex items-center gap-3 px-4 md:px-6 h-14 border-b border-white/8 bg-black/70 backdrop-blur-md shrink-0">
-            <Link href="/dashboard" className="md:hidden flex items-center gap-1.5 text-white/40 hover:text-white transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${streaming ? "bg-yellow-400" : "bg-primary"} animate-pulse`} />
-              <span className="font-mono text-sm text-white/60 tracking-wide">
-                {streaming ? "OUWIBO WORKING..." : "OUWIBO AGENT // READY"}
-              </span>
-            </div>
-            <div className="ml-auto flex items-center gap-2">
-              {!canSend && (
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className="text-xs font-mono text-yellow-400/80 border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 rounded-full hover:bg-yellow-400/15 transition-colors"
-                >
-                  Set API Key
-                </button>
-              )}
-              <button onClick={() => setShowSettings(true)} className="md:hidden text-white/40 hover:text-white transition-colors">
-                <Settings className="w-5 h-5" />
-              </button>
-            </div>
-          </header>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-5">
-            {messages.length === 0 && !streamingMsg && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center justify-center h-full text-center gap-5 py-10"
+        <div className="flex-1 overflow-y-auto p-3">
+          <p className="mb-2 px-2 py-1 text-[10px] tracking-[0.28em] text-white/20 font-mono">QUICK PROMPTS</p>
+          <div className="space-y-1.5">
+            {QUICK_PROMPTS.map((item) => (
+              <button
+                key={item}
+                onClick={() => sendMessage(item)}
+                disabled={!canSend}
+                className="w-full rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2 text-left font-mono text-[11px] leading-relaxed text-white/35 transition-all hover:border-primary/25 hover:bg-primary/8 hover:text-white/70 disabled:opacity-20"
               >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      <main className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/8 bg-black/70 px-4 backdrop-blur-md md:px-6">
+          <Link href="/dashboard" className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-white md:hidden">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${loading ? "bg-yellow-400" : "bg-primary"} animate-pulse`} />
+            <span className="font-mono text-sm tracking-wide text-white/60">{loading ? "OUWIBO WORKING..." : "OUWIBO AGENT // READY"}</span>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            {!serverHasAiKey && (
+              <span className="hidden rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-xs font-mono text-yellow-400 md:inline-flex">
+                Add API key in Vercel env
+              </span>
+            )}
+            <button onClick={() => setShowSettings(true)} className="text-white/40 transition-colors hover:text-white md:hidden">
+              <Settings className="h-5 w-5" />
+            </button>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
+          <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+            {messages.length === 0 && !streamingText && (
+              <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="flex min-h-[55vh] flex-col items-center justify-center gap-5 text-center">
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl scale-125 animate-pulse" />
+                  <div className="absolute inset-0 scale-125 rounded-full bg-primary/20 blur-xl animate-pulse" />
                   <img
                     src="/logo.png"
                     alt="OUWIBO"
-                    className="relative w-16 h-16 rounded-full object-cover border-2 border-primary/40 shadow-[0_0_20px_rgba(0,255,65,0.35)]"
+                    className="relative h-16 w-16 rounded-full border-2 border-primary/40 object-cover shadow-[0_0_20px_rgba(0,255,65,0.35)]"
                     style={{ objectPosition: "center 15%" }}
                   />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white mb-1">OUWIBO Agent</h2>
-                  <p className="text-sm text-white/35 font-mono max-w-xs">
-                    Give me any task — I'll search the web, write code, browse pages, and create plans autonomously.
+                  <h1 className="mb-1 text-2xl font-bold text-white">OUWIBO Agent</h1>
+                  <p className="mx-auto max-w-xl text-sm leading-relaxed text-white/35">
+                    Public AI agent di atas Zo Computer. Pilih model, lalu kirim prompt langsung.
                   </p>
                 </div>
 
-                {/* Provider info */}
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/3">
-                  <Cpu className="w-3.5 h-3.5 text-primary/60" />
-                  <span className="text-xs font-mono text-white/40">{providerInfo.label}</span>
-                  {serverHasKey && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-mono">SERVER KEY</span>}
-                  {providerInfo.free && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 font-mono">FREE</span>}
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Badge tone="blue">{modelLabel}</Badge>
+                  {selectedModel?.type === "free" && <Badge tone="green">FREE</Badge>}
+                  {selectedModel?.type === "subscribers" && <Badge tone="amber">PREMIUM</Badge>}
+                  {serverHasAiKey ? <Badge tone="green">API KEY ACTIVE</Badge> : <Badge tone="amber">SET ZO_API_KEY</Badge>}
                 </div>
 
-                {!canSend && (
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-yellow-400/30 bg-yellow-400/10 text-yellow-400 text-sm font-mono hover:bg-yellow-400/15 transition-colors"
-                  >
-                    <KeyRound className="w-4 h-4" />
-                    Add your API key to start
-                  </button>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg w-full mt-1">
-                  {QUICK_TASKS.slice(0, 4).map((task, i) => (
+                <div className="grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2">
+                  {QUICK_PROMPTS.slice(0, 4).map((item) => (
                     <button
-                      key={i}
-                      onClick={() => sendMessage(task)}
-                      disabled={streaming || !canSend}
-                      className="text-left text-[11px] text-white/35 border border-white/8 bg-white/2 hover:bg-primary/8 hover:border-primary/25 hover:text-white/65 rounded-xl px-3 py-2.5 transition-all font-mono leading-relaxed disabled:opacity-20"
+                      key={item}
+                      onClick={() => sendMessage(item)}
+                      disabled={!canSend}
+                      className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3 text-left text-[11px] leading-relaxed text-white/35 transition-all hover:border-primary/25 hover:bg-primary/8 hover:text-white/70 disabled:opacity-20"
                     >
-                      {task}
+                      {item}
                     </button>
                   ))}
                 </div>
@@ -579,77 +507,67 @@ export default function AgentPage() {
             )}
 
             <AnimatePresence initial={false}>
-              {messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
+              {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
             </AnimatePresence>
 
-            {/* Streaming */}
-            {streamingMsg && (
+            {streamingText && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/40 shadow-[0_0_8px_rgba(0,255,65,0.25)] shrink-0 mt-0.5 relative">
-                  <img src="/logo.png" alt="OUWIBO" className="w-full h-full object-cover" style={{ objectPosition: "center 15%" }} />
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                  </div>
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-black/60 shadow-[0_0_10px_rgba(0,255,65,0.18)]">
+                  <img src="/logo.png" alt="OUWIBO" className="h-full w-full object-cover" style={{ objectPosition: "center 15%" }} />
                 </div>
-                <div className="max-w-[85%] md:max-w-[72%] space-y-2">
-                  {streamingMsg.toolCalls.length > 0 && (
-                    <div className="space-y-1.5">
-                      {streamingMsg.toolCalls.map(tc => <ToolCallCard key={tc.id} tc={tc} />)}
-                    </div>
-                  )}
-                  {streamingMsg.content ? (
-                    <div className="px-4 py-3 rounded-2xl rounded-bl-sm text-sm leading-relaxed bg-white/5 border border-white/10 text-white/90">
-                      <pre className="whitespace-pre-wrap font-sans">{streamingMsg.content}</pre>
-                      <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1 align-bottom" />
-                    </div>
-                  ) : streamingMsg.toolCalls.length === 0 ? (
-                    <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-white/5 border border-white/10 flex gap-1 items-center">
-                      {[0, 1, 2].map(i => (
-                        <div key={i} className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                      ))}
-                    </div>
-                  ) : null}
+                <div className="max-w-[86%] md:max-w-[72%]">
+                  <div className="rounded-2xl rounded-bl-sm border border-white/10 bg-white/5 px-4 py-3 text-sm leading-relaxed text-white/90">
+                    <pre className="whitespace-pre-wrap font-sans">{streamingText}<span className="ml-1 inline-block h-4 w-2 animate-pulse bg-primary align-bottom" /></pre>
+                  </div>
                 </div>
               </motion.div>
             )}
+
+            {!messages.length && loading && (
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Memproses jawaban...
+              </div>
+            )}
+
             <div ref={bottomRef} />
           </div>
-
-          {/* Input */}
-          <div className="p-3 md:p-4 border-t border-white/8 bg-black/70 backdrop-blur-md shrink-0">
-            <div className="flex gap-2 items-end max-w-4xl mx-auto">
-              <div className="flex-1 relative">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={handleKey}
-                  disabled={streaming || !canSend}
-                  placeholder={canSend ? "Give OUWIBO a task..." : "Add your API key in Settings to start..."}
-                  rows={1}
-                  className="w-full resize-none bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-primary/50 transition-colors font-mono disabled:opacity-35"
-                  style={{ maxHeight: "120px", overflowY: "auto" }}
-                  onInput={e => {
-                    const t = e.target as HTMLTextAreaElement;
-                    t.style.height = "auto";
-                    t.style.height = Math.min(t.scrollHeight, 120) + "px";
-                  }}
-                />
-              </div>
-              <button
-                onClick={() => sendMessage()}
-                disabled={!input.trim() || streaming || !canSend}
-                className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center text-black disabled:opacity-25 hover:scale-105 active:scale-95 transition-all shadow-[0_0_16px_rgba(0,255,65,0.3)] hover:shadow-[0_0_24px_rgba(0,255,65,0.5)] shrink-0"
-              >
-                {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </button>
-            </div>
-            <p className="text-center text-[10px] text-white/12 mt-2 font-mono tracking-wider">
-              ENTER · SHIFT+ENTER new line · {providerInfo.label}
-            </p>
-          </div>
         </div>
-      </div>
+
+        <div className="shrink-0 border-t border-white/8 bg-black/70 p-3 backdrop-blur-md md:p-4">
+          <div className="mx-auto flex max-w-4xl items-end gap-2">
+            <div className="relative flex-1">
+              <textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={handleKey}
+                disabled={!canSend || loading}
+                placeholder={serverHasAiKey ? `Tulis prompt untuk ${modelLabel}...` : "Tambahkan API key di Vercel dulu..."}
+                rows={1}
+                className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-primary/50 disabled:opacity-40"
+                style={{ maxHeight: 120, overflowY: "auto" }}
+                onInput={(event) => {
+                  const target = event.target as HTMLTextAreaElement;
+                  target.style.height = "auto";
+                  target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+                }}
+              />
+            </div>
+            <button
+              onClick={() => sendMessage()}
+              disabled={!input.trim() || !canSend || loading}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-black shadow-[0_0_16px_rgba(0,255,65,0.3)] transition-all hover:scale-105 hover:shadow-[0_0_24px_rgba(0,255,65,0.45)] active:scale-95 disabled:opacity-25"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
+          </div>
+          <p className="mt-2 text-center font-mono text-[10px] tracking-wider text-white/12">
+            ENTER · SHIFT+ENTER baru baris · model: {modelLabel}
+          </p>
+        </div>
+      </main>
     </div>
   );
 }

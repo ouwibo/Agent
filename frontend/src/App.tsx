@@ -1,5 +1,4 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
-import { AnimatePresence, motion } from "framer-motion";
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import AgentPage from "@/pages/agent";
