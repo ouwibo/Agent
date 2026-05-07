@@ -139,7 +139,7 @@ export default function Dashboard() {
           <p className="text-[10px] font-mono text-white/25 tracking-widest mb-3">SYSTEM STATUS</p>
           {[
             { label: 'Backend API', ok: backendOk },
-            { label: 'Supabase', ok: !!backendKeyState.supabase },
+            { label: 'AI API', ok: !!backendKeyState.ai },
           ].map((s, i) => (
             <div key={i} className="flex items-center gap-2">
               <div className={`w-1.5 h-1.5 rounded-full ${s.ok ? 'bg-primary animate-pulse' : 'bg-red-500'}`} />
@@ -231,8 +231,13 @@ export default function Dashboard() {
             </motion.div>
           </div>
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }} className="border border-white/8 bg-black/40 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3"><span className="font-mono text-xs text-white/30 tracking-wider">NETWORK_THROUGHPUT</span><span className="font-mono text-xs text-primary/40">LIVE</span></div>
-            <div className="flex items-end gap-px h-14">{Array.from({ length: 64 }).map((_, i) => (<motion.div key={i} animate={{ height: ['15%', '85%', '25%', '100%', '45%', '60%'][Math.floor(Math.random() * 6)] }} transition={{ duration: 1.2 + Math.random() * 2, repeat: Infinity, repeatType: 'reverse', delay: Math.random() * 2 }} className="flex-1 bg-primary/50 rounded-t-sm" />))}</div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-mono text-xs text-white/30 tracking-wider">NETWORK_THROUGHPUT</span>
+              <span className="font-mono text-xs text-primary/40">LIVE</span>
+            </div>
+            <div className="h-14 rounded-lg border border-white/6 bg-white/[0.02] flex items-center justify-center text-[11px] font-mono text-white/25">
+              Live throughput visual removed to keep the page light.
+            </div>
           </motion.div>
         </div>
       </main>

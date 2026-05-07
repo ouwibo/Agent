@@ -28,6 +28,6 @@ export async function fetchLiveStats() {
       ai: !!data.serverKeys?.ai,
     },
     availableProviders: data.availableProviders ?? (data.serverKeys?.ai ? ["ai"] : []),
-    defaultModel: data.defaultModel ?? "zo:openai/gpt-5.4-mini",
+    defaultModel: data.defaultModel ?? "GPT-5.4 mini",
   };
 }
