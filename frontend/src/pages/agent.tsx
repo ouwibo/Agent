@@ -137,6 +137,88 @@ function WritingIndicator({ text }: { text: string }) {
   );
 }
 
+function isFileMentionToken(token: string) {
+  return /^`file\s+['"][^'"]+['"]`$/.test(token.trim());
+}
+
+function extractFileMentionPath(token: string) {
+  const match = token.trim().match(/^`file\s+['"]([^'"]+)['"]`$/);
+  return match?.[1] || "";
+}
+
+function isUrlToken(token: string) {
+  return /^https?:\/\//i.test(token.trim());
+}
+
+function renderMessageContent(content: string) {
+  const parts: React.ReactNode[] = [];
+  const regex = /(`file\s+['"][^'"]+['"]`|https?:\/\/\S+)/g;
+  let lastIndex = 0;
+  let key = 0;
+
+  for (const match of content.matchAll(regex)) {
+    const index = match.index ?? 0;
+    if (index > lastIndex) {
+      parts.push(
+        <span key={`t-${key++}`} className="whitespace-pre-wrap">
+          {content.slice(lastIndex, index)}
+        </span>,
+      );
+    }
+
+    const token = match[0];
+    if (isFileMentionToken(token)) {
+      const path = extractFileMentionPath(token);
+      parts.push(
+        <span
+          key={`f-${key++}`}
+          className="mx-0.5 inline-flex max-w-full items-center rounded-lg border border-primary/25 bg-primary/10 px-2 py-1 align-middle font-mono text-[11px] text-primary shadow-[0_0_0_1px_rgba(0,255,65,0.06)]"
+          title={path}
+        >
+          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+          <span className="truncate">file {path}</span>
+        </span>,
+      );
+    } else if (isUrlToken(token)) {
+      parts.push(
+        <a
+          key={`u-${key++}`}
+          href={token}
+          target="_blank"
+          rel="noreferrer"
+          className="mx-0.5 inline-flex max-w-full items-center rounded-lg border border-cyan-400/25 bg-cyan-500/10 px-2 py-1 align-middle font-mono text-[11px] text-cyan-300 no-underline transition-colors hover:bg-cyan-500/16"
+          title={token}
+        >
+          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-cyan-300" />
+          <span className="truncate">{token.replace(/^https?:\/\//i, "")}</span>
+        </a>,
+      );
+    } else {
+      parts.push(
+        <span key={`o-${key++}`} className="whitespace-pre-wrap">
+          {token}
+        </span>,
+      );
+    }
+
+    lastIndex = index + token.length;
+  }
+
+  if (lastIndex < content.length) {
+    parts.push(
+      <span key={`t-${key++}`} className="whitespace-pre-wrap">
+        {content.slice(lastIndex)}
+      </span>,
+    );
+  }
+
+  if (!parts.length) {
+    return <span className="whitespace-pre-wrap">{content}</span>;
+  }
+
+  return <>{parts}</>;
+}
+
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
   return (
@@ -159,7 +241,7 @@ function MessageBubble({ message }: { message: Message }) {
               : `rounded-bl-sm border ${UI.borderStrong} bg-white/[0.055] text-white/92`
           }`}
         >
-          <pre className="whitespace-pre-wrap font-sans">{message.content}</pre>
+          {renderMessageContent(message.content)}
         </div>
         <span className="px-1 font-mono text-[10px] text-white/18">{new Date(message.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
       </div>
@@ -507,8 +589,8 @@ export default function AgentPage() {
                 disabled={!canSend || loading}
                 placeholder={serverHasAiKey ? `Tulis prompt untuk ${modelLabel}...` : "Tambahkan API key di Vercel dulu..."}
                 rows={1}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-3.5 py-2.5 text-[13px] text-white placeholder-white/24 focus:outline-none focus:border-primary/55 disabled:opacity-40"
-                style={{ maxHeight: 96, overflowY: "auto" }}
+                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-3.5 py-2.5 text-[13px] text-white placeholder-white/24 focus:outline-none focus:border-primary/55 disabled:opacity-40 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                style={{ maxHeight: 96, overflowY: "hidden" }}
                 onInput={(event) => {
                   const target = event.target as HTMLTextAreaElement;
                   target.style.height = "auto";
