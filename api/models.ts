@@ -8,17 +8,14 @@ type ZoModel = {
   is_byok?: boolean;
 };
 
-const PUBLIC_MODEL_PATTERNS = [/\/gpt-5\.4-mini$/i, /\/glm-5$/i, /kimi/i];
+const PUBLIC_MODEL_PATTERNS = [/\/gpt-5\.4-mini$/i, /\/glm-5$/i];
 
 function cleanLabel(label: string) {
   return label.replace(/^Zo[\s·:-]+/i, "").trim();
 }
 
 function titleCase(value: string) {
-  return value
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-    .trim();
+  return value.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()).trim();
 }
 
 function fallbackLabel(modelName: string) {
@@ -27,10 +24,7 @@ function fallbackLabel(modelName: string) {
   const prettyName = rawName || vendor;
 
   if (/^gpt-/i.test(prettyName)) return prettyName.replace(/^gpt-/i, "GPT-").replace(/-/g, " ");
-  if (/^claude-/i.test(prettyName)) return prettyName.replace(/^claude-/i, "Claude ").replace(/-/g, " ");
-  if (/^gemini-/i.test(prettyName)) return prettyName.replace(/^gemini-/i, "Gemini ").replace(/-/g, " ");
   if (/^glm-/i.test(prettyName)) return prettyName.replace(/^glm-/i, "GLM ").replace(/-/g, " ");
-  if (/^minimax-/i.test(prettyName)) return prettyName.replace(/^minimax-/i, "MiniMax ").replace(/-/g, " ");
   return titleCase(prettyName);
 }
 

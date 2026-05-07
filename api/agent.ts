@@ -1,11 +1,11 @@
 type ZoStreamEvent = {
-  type: "text" | "done" | "error";
+  type: "text" | "thinking" | "done" | "error";
   content?: string;
   message?: string;
 };
 
 const DEFAULT_MODEL = "zo:openai/gpt-5.4-mini";
-const PUBLIC_MODEL_PATTERNS = [/\/gpt-5\.4-mini$/i, /\/glm-5$/i, /kimi/i];
+const PUBLIC_MODEL_PATTERNS = [/\/gpt-5\.4-mini$/i, /\/glm-5$/i];
 
 function writeEvent(res: any, event: ZoStreamEvent) {
   res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -33,6 +33,10 @@ function normalizeModelName(modelName: unknown) {
   const trimmed = modelName.trim();
   if (!trimmed) return DEFAULT_MODEL;
   return PUBLIC_MODEL_PATTERNS.some((pattern) => pattern.test(trimmed)) ? trimmed : DEFAULT_MODEL;
+}
+
+function isStreamEnd(parsed: any, currentEvent: string) {
+  return currentEvent === "End" || parsed?.kind === "end" || parsed?.kind === "done";
 }
 
 export default async function handler(req: any, res: any) {
@@ -66,7 +70,12 @@ export default async function handler(req: any, res: any) {
         Accept: "text/event-stream",
       },
       signal: controller.signal,
-      body: JSON.stringify({ input, conversation_id: conversationId, model_name: modelName, stream: true }),
+      body: JSON.stringify({
+        input,
+        conversation_id: conversationId,
+        model_name: modelName,
+        stream: true,
+      }),
     });
   } catch (error: any) {
     clearTimeout(timeout);
@@ -126,19 +135,37 @@ export default async function handler(req: any, res: any) {
           continue;
         }
 
-        if (currentEvent === "Error") {
-          writeEvent(res, { type: "error", message: parsed?.message || "Zo returned an error" });
+        if (parsed?.kind === "request") continue;
+
+        if (parsed?.kind === "error" || currentEvent === "Error") {
+          writeEvent(res, { type: "error", message: parsed?.message || parsed?.error || "Zo returned an error" });
           finish();
           return;
         }
 
-        if (currentEvent === "End") {
+        if (isStreamEnd(parsed, currentEvent)) {
           finish();
           return;
+        }
+
+        if (parsed?.kind === "response" && Array.isArray(parsed.parts)) {
+          for (const part of parsed.parts) {
+            const content = typeof part?.content === "string" ? part.content : "";
+            if (!content) continue;
+            if (part?.part_kind === "thinking") {
+              writeEvent(res, { type: "thinking", content });
+            } else if (part?.part_kind === "text") {
+              writeEvent(res, { type: "text", content });
+            }
+          }
+          continue;
         }
 
         const content = typeof parsed?.content === "string" ? parsed.content : "";
-        if (content) writeEvent(res, { type: "text", content });
+        if (content) {
+          const type = parsed?.part_kind === "thinking" ? "thinking" : "text";
+          writeEvent(res, { type, content });
+        }
       }
     }
 

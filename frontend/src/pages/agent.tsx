@@ -51,7 +51,6 @@ const CONVERSATION_STORAGE_KEY = "ouwibo_zo_conversation";
 const FALLBACK_MODELS: ZoModel[] = [
   { model_name: "zo:openai/gpt-5.4-mini", label: "GPT-5.4 mini", vendor: "OpenAI", type: "free", context_window: 400000, is_byok: false },
   { model_name: "zo:zai/glm-5", label: "GLM 5", vendor: "Z.AI", type: "free", context_window: 202752, is_byok: false },
-  { model_name: "kimi:kimi-k2", label: "Kimi K2", vendor: "Moonshot AI", type: "free", context_window: 200000, is_byok: false },
 ];
 
 const QUICK_PROMPTS = [
@@ -109,6 +108,7 @@ export default function AgentPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [thinking, setThinking] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [health, setHealth] = useState<HealthData | null>(null);
@@ -160,6 +160,7 @@ export default function AgentPage() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
+    setThinking(false);
     setStreamingText("");
     setStreamConversationId(null);
 
@@ -205,10 +206,21 @@ export default function AgentPage() {
 
           if (evt?.type === "text" && evt.content) {
             finalText += evt.content;
+            setThinking(false);
             setStreamingText(finalText);
           }
-          if (evt?.type === "error") throw new Error(evt.message || "AI returned an error");
-          if (evt?.type === "done") break;
+
+          if (evt?.type === "thinking") {
+            setThinking(true);
+          }
+
+          if (evt?.type === "error") {
+            throw new Error(evt.message || "AI returned an error");
+          }
+
+          if (evt?.type === "done") {
+            break;
+          }
         }
       }
 
@@ -221,6 +233,7 @@ export default function AgentPage() {
       setMessages((prev) => [...prev, { id: `e-${Date.now()}`, role: "assistant", content: `⚠️ ${message}`, createdAt: new Date().toISOString() }]);
     } finally {
       setLoading(false);
+      setThinking(false);
       setStreamingText("");
       setStreamConversationId(null);
     }
@@ -344,7 +357,18 @@ export default function AgentPage() {
                 <div className="max-w-[86%] md:max-w-[72%]"><div className="rounded-2xl rounded-bl-sm border border-white/10 bg-white/5 px-4 py-3 text-sm leading-relaxed text-white/90"><pre className="whitespace-pre-wrap font-sans">{streamingText}<span className="ml-1 inline-block h-4 w-2 animate-pulse bg-primary align-bottom" /></pre></div></div>
               </motion.div>
             )}
-            {!messages.length && loading && <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70"><Loader2 className="h-4 w-4 animate-spin text-primary" />Memproses jawaban...</div>}
+            {thinking && !streamingText && (
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Thinking...
+              </div>
+            )}
+            {!messages.length && loading && (
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Memproses jawaban...
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
         </div>
