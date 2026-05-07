@@ -16,8 +16,8 @@ import {
 import { MatrixBackground } from "@/components/matrix-background";
 
 const UI = {
-  page: "bg-[#06070a]",
-  panel: "bg-zinc-950/92",
+  page: "bg-[#050608]",
+  panel: "bg-zinc-950/94",
   panelSoft: "bg-white/[0.045]",
   border: "border-white/10",
   borderStrong: "border-white/15",
@@ -25,6 +25,14 @@ const UI = {
   accentBg: "bg-primary/16",
   accentRing: "shadow-[0_0_24px_rgba(0,255,65,0.18)]",
 };
+
+const CHAT_MODES = [
+  { id: "standard", label: "Standard", hint: "Singkat & jelas" },
+  { id: "long", label: "Long", hint: "Jawaban panjang" },
+  { id: "multi", label: "Multi", hint: "Beberapa jawaban" },
+] as const;
+
+type ChatMode = (typeof CHAT_MODES)[number]["id"];
 
 interface Message {
   id: string;
@@ -123,7 +131,7 @@ function WritingIndicator({ text }: { text: string }) {
       className="max-w-[84%] md:max-w-[70%]"
     >
       <div className={`rounded-2xl rounded-bl-sm border ${UI.borderStrong} bg-gradient-to-b from-white/[0.085] to-white/[0.045] px-3.5 py-2.75 text-[13px] leading-relaxed text-white/95 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]`}>
-        <pre className="whitespace-pre-wrap font-sans">
+        <pre className="whitespace-pre-wrap font-sans leading-[1.65] tracking-[0.01em]">
           {text}
           <motion.span
             animate={{ opacity: [0.15, 1, 0.15], y: [0, -1, 0] }}
@@ -264,6 +272,7 @@ export default function AgentPage() {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [models, setModels] = useState<ZoModel[]>(FALLBACK_MODELS);
   const [model, setModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || "zo:openai/gpt-5.4-mini");
+  const [mode, setMode] = useState<ChatMode>(() => (localStorage.getItem("ouwibo_chat_mode") as ChatMode) || "long");
   const [conversationId, setConversationId] = useState(() => localStorage.getItem(CONVERSATION_STORAGE_KEY) || "");
   const [streamConversationId, setStreamConversationId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -294,6 +303,10 @@ export default function AgentPage() {
   }, [model]);
 
   useEffect(() => {
+    localStorage.setItem("ouwibo_chat_mode", mode);
+  }, [mode]);
+
+  useEffect(() => {
     if (conversationId) localStorage.setItem(CONVERSATION_STORAGE_KEY, conversationId);
     else localStorage.removeItem(CONVERSATION_STORAGE_KEY);
   }, [conversationId]);
@@ -318,7 +331,7 @@ export default function AgentPage() {
       const response = await fetch(`${BACKEND}/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ input: prompt, conversation_id: conversationId, model_name: model }),
+        body: JSON.stringify({ input: prompt, conversation_id: conversationId, model_name: model, mode }),
       });
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
@@ -378,7 +391,7 @@ export default function AgentPage() {
       setStreamingText("");
       setStreamConversationId(null);
     }
-  }, [canSend, conversationId, input, loading, model, streamConversationId]);
+  }, [canSend, conversationId, input, loading, model, mode, streamConversationId]);
 
   const handleKey = (event: React.KeyboardEvent) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -529,6 +542,24 @@ export default function AgentPage() {
           </div>
         </header>
 
+        <div className="flex items-center gap-2 border-b border-white/8 bg-black/50 px-3.5 py-2 backdrop-blur-md md:px-5">
+          {CHAT_MODES.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setMode(item.id)}
+              className={`rounded-full border px-3 py-1.5 text-left transition-all ${
+                mode === item.id
+                  ? "border-primary/40 bg-primary/12 text-white"
+                  : "border-white/10 bg-white/[0.02] text-white/55 hover:bg-white/[0.05] hover:text-white"
+              }`}
+            >
+              <div className="text-[11px] font-semibold">{item.label}</div>
+              <div className="text-[9px] font-mono text-white/30">{item.hint}</div>
+            </button>
+          ))}
+          <div className="ml-auto hidden text-[10px] font-mono text-white/30 md:block">Mode controls answer length and structure</div>
+        </div>
+
         <div className="flex-1 overflow-y-auto px-3.5 py-5 md:px-6">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
             {messages.length === 0 && !streamingText && (
@@ -539,10 +570,11 @@ export default function AgentPage() {
                 </div>
                 <div>
                   <h1 className="mb-1 text-xl font-bold text-white">OUWIBO Agent</h1>
-                  <p className="mx-auto max-w-lg text-sm leading-relaxed text-white/38">Public AI agent di atas Zo Computer. Pilih model, lalu kirim prompt langsung.</p>
+                  <p className="mx-auto max-w-lg text-sm leading-relaxed text-white/38">Public AI agent di atas Zo Computer. Pilih model, mode jawaban, lalu kirim prompt langsung.</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <Badge tone="blue">{modelLabel}</Badge>
+                  <Badge tone="blue">{mode.toUpperCase()}</Badge>
                   {selectedModel?.type === "free" && <Badge tone="green">FREE</Badge>}
                   {serverHasAiKey ? <Badge tone="green">API KEY ACTIVE</Badge> : <Badge tone="amber">SET ZO_API_KEY</Badge>}
                 </div>
@@ -606,7 +638,7 @@ export default function AgentPage() {
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
           </div>
-          <p className="mt-2 text-center font-mono text-[10px] tracking-wider text-white/12">ENTER · SHIFT+ENTER baru baris · model: {modelLabel}</p>
+          <p className="mt-2 text-center font-mono text-[10px] tracking-wider text-white/12">ENTER · SHIFT+ENTER baru baris · model: {modelLabel} · mode: {mode.toUpperCase()}</p>
         </div>
       </main>
     </div>
