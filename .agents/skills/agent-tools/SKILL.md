@@ -3,12 +3,11 @@ name: agent-tools
 description: "Run 250+ AI apps via inference.sh CLI - image generation, video creation, LLMs, search, 3D, Twitter automation. Models: FLUX, Veo, Gemini, Grok, Claude, Seedance, OmniHuman, Tavily, Exa, OpenRouter, and many more. Use when running AI apps, generating images/videos, calling LLMs, web search, or automating Twitter. Triggers: inference.sh, infsh, ai model, run ai, serverless ai, ai api, flux, veo, claude api, image generation, video generation, openrouter, tavily, exa search, twitter api, grok"
 allowed-tools: Bash(belt *)
 ---
-
 # [inference.sh](https://inference.sh)
 
 Run 250+ AI apps in the cloud with a simple CLI. No GPU required.
 
-![[inference.sh](https://inference.sh)](https://cloud.inference.sh/app/files/u/4mg21r6ta37mpaz6ktzwtt8krr/01kgjw8atdxgkrsr8a2t5peq7b.jpeg)
+![inference.sh](https://cloud.inference.sh/app/files/u/4mg21r6ta37mpaz6ktzwtt8krr/01kgjw8atdxgkrsr8a2t5peq7b.jpeg)
 
 ## Install CLI
 
@@ -17,9 +16,9 @@ curl -fsSL https://cli.inference.sh | sh
 belt login
 ```
 
-> **What does the installer do?** The [install script](https://cli.inference.sh) detects your OS and architecture, downloads the correct binary from `dist.inference.sh`, verifies its SHA-256 checksum, and places it in your PATH. That's it — no elevated permissions, no background processes, no telemetry. If you have [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) installed, the installer also verifies the Sigstore signature automatically.
+> **What does the installer do?** The [install script](https://cli.inference.sh) detects your OS and architecture, downloads the correct binary from `file dist.inference.sh`, verifies its SHA-256 checksum, and places it in your PATH. That's it — no elevated permissions, no background processes, no telemetry. If you have [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) installed, the installer also verifies the Sigstore signature automatically.
+> ****Manual install** (if you prefer not to pipe to sh):
 >
-> **Manual install** (if you prefer not to pipe to sh):
 > ```bash
 > # Download the binary and checksums
 > curl -LO https://dist.inference.sh/cli/checksums.txt
@@ -74,7 +73,7 @@ belt app run x/post-create --input '{"text": "Check this out!", "media": "./scre
 ## Commands
 
 | Task | Command |
-|------|---------|
+| --- | --- |
 | List all apps | `belt app list` |
 | Search apps | `belt app list --search "flux"` |
 | Filter by category | `belt app list --category image` |
@@ -87,7 +86,7 @@ belt app run x/post-create --input '{"text": "Check this out!", "media": "./scre
 ## What's Available
 
 | Category | Examples |
-|----------|----------|
+| --- | --- |
 | **Image** | FLUX, Gemini 3 Pro, Grok Imagine, Seedream 4.5, Reve, Topaz Upscaler |
 | **Video** | Veo 3.1, Seedance 1.5, Wan 2.5, OmniHuman, Fabric, HunyuanVideo Foley |
 | **LLMs** | Claude Opus/Sonnet/Haiku, Gemini 3 Pro, Kimi K2, GLM-4, any OpenRouter model |
@@ -128,10 +127,10 @@ npx skills add inference-sh/skills@background-removal
 
 ## Reference Files
 
-- [Authentication & Setup](references/authentication.md)
-- [Discovering Apps](references/app-discovery.md)
-- [Running Apps](references/running-apps.md)
-- [CLI Reference](references/cli-reference.md)
+- Authentication & Setup
+- Discovering Apps
+- Running Apps
+- CLI Reference
 
 ## Documentation
 
@@ -142,4 +141,3 @@ npx skills add inference-sh/skills@background-removal
 - [CLI Setup](https://inference.sh/docs/extend/cli-setup) - Installing the CLI
 - [Workflows vs Agents](https://inference.sh/blog/concepts/workflows-vs-agents) - When to use each
 - [Why Agent Runtimes Matter](https://inference.sh/blog/agent-runtime/why-runtimes-matter) - Runtime benefits
-
