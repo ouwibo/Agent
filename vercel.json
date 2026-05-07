@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "installCommand": "npm install --workspaces --include-workspace-root --no-fund --no-audit",
+  "buildCommand": "npm run build",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/:path*", "destination": "/index.html" }
+  ]
+}

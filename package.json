@@ -1,0 +1,10 @@
+{
+  "name": "ouwibo-agent-monorepo",
+  "private": true,
+  "workspaces": ["frontend", "server"],
+  "scripts": {
+    "dev": "npm --prefix server run dev",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix server run start"
+  }
+}
