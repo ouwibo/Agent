@@ -50,7 +50,7 @@ function buildHistoryBlock(history: unknown) {
   if (!Array.isArray(history) || history.length === 0) return "No prior messages.";
 
   return history
-    .slice(-12)
+    .slice(-16)
     .map((entry) => {
       const role = entry?.role === "assistant" ? "Assistant" : "User";
       const content = cleanContent(entry?.content);
@@ -60,13 +60,12 @@ function buildHistoryBlock(history: unknown) {
     .join("\n");
 }
 
-function buildInput(body: any, prompt: string) {
-  const historyBlock = buildHistoryBlock(body?.history);
+function buildPrompt(body: any, prompt: string) {
   return [
     SYSTEM_PROMPT,
     "",
     "Conversation history:",
-    historyBlock,
+    buildHistoryBlock(body?.history),
     "",
     "Current user request:",
     prompt,
@@ -75,6 +74,43 @@ function buildInput(body: any, prompt: string) {
 
 function isStreamEnd(parsed: any, currentEvent: string) {
   return currentEvent === "End" || parsed?.kind === "end" || parsed?.kind === "done";
+}
+
+function collectOutput(parsed: any) {
+  const direct = cleanContent(parsed?.data?.output ?? parsed?.output ?? parsed?.result);
+  return direct;
+}
+
+function splitForLiveWriting(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) return [] as string[];
+  if (trimmed.length <= 48) return [trimmed];
+
+  const chunks: string[] = [];
+  const tokens = trimmed.split(/(\s+)/);
+  let buffer = "";
+
+  for (const token of tokens) {
+    if (!token) continue;
+    if ((buffer + token).length > 36 && buffer.trim()) {
+      chunks.push(buffer);
+      buffer = token;
+    } else {
+      buffer += token;
+    }
+  }
+
+  if (buffer.trim()) chunks.push(buffer);
+  return chunks.length ? chunks : [trimmed];
+}
+
+async function streamTextGradually(res: any, text: string) {
+  const chunks = splitForLiveWriting(text);
+  for (let i = 0; i < chunks.length; i += 1) {
+    writeEvent(res, { type: "text", content: chunks[i] });
+    const delay = Math.min(35, Math.max(8, Math.round(chunks[i].length / 3)));
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
 }
 
 export default async function handler(req: any, res: any) {
@@ -103,7 +139,7 @@ export default async function handler(req: any, res: any) {
       },
       signal: controller.signal,
       body: JSON.stringify({
-        input: buildInput(body, input),
+        input: buildPrompt(body, input),
         model_name: modelName,
         stream: true,
       }),
@@ -130,6 +166,7 @@ export default async function handler(req: any, res: any) {
   const decoder = new TextDecoder();
   let buffer = "";
   let currentEvent = "";
+  let sentAnyText = false;
 
   const finish = () => {
     clearTimeout(timeout);
@@ -175,28 +212,51 @@ export default async function handler(req: any, res: any) {
           return;
         }
 
-        if (isStreamEnd(parsed, currentEvent)) {
-          finish();
-          return;
-        }
-
         if (parsed?.kind === "response" && Array.isArray(parsed.parts)) {
           for (const part of parsed.parts) {
             const content = cleanContent(part?.content);
             if (!content) continue;
-            if (part?.part_kind === "thinking") {
+            if (part?.part_kind === "thinking" || part?.part_delta_kind === "thinking") {
               writeEvent(res, { type: "thinking", content });
-            } else if (part?.part_kind === "text") {
+            } else if (part?.part_kind === "text" || part?.part_delta_kind === "text") {
               writeEvent(res, { type: "text", content });
+              sentAnyText = true;
             }
           }
           continue;
+        }
+
+        if (parsed?.part_delta_kind === "thinking" || parsed?.kind === "thinking") {
+          const content = cleanContent(parsed?.content ?? parsed?.delta);
+          if (content) writeEvent(res, { type: "thinking", content });
+          continue;
+        }
+
+        if (parsed?.part_delta_kind === "text") {
+          const content = cleanContent(parsed?.content ?? parsed?.delta);
+          if (content) {
+            writeEvent(res, { type: "text", content });
+            sentAnyText = true;
+          }
+          continue;
+        }
+
+        const output = collectOutput(parsed);
+        if (isStreamEnd(parsed, currentEvent) && output) {
+          if (!sentAnyText) {
+            await streamTextGradually(res, output);
+          } else {
+            writeEvent(res, { type: "text", content: output });
+          }
+          finish();
+          return;
         }
 
         const content = cleanContent(parsed?.content);
         if (content) {
           const type = parsed?.part_kind === "thinking" ? "thinking" : "text";
           writeEvent(res, { type, content });
+          if (type === "text") sentAnyText = true;
         }
       }
     }

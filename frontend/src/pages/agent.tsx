@@ -15,6 +15,17 @@ import {
 } from "lucide-react";
 import { MatrixBackground } from "@/components/matrix-background";
 
+const UI = {
+  page: "bg-[#06070a]",
+  panel: "bg-zinc-950/92",
+  panelSoft: "bg-white/[0.045]",
+  border: "border-white/10",
+  borderStrong: "border-white/15",
+  accent: "text-primary",
+  accentBg: "bg-primary/16",
+  accentRing: "shadow-[0_0_24px_rgba(0,255,65,0.18)]",
+};
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -70,12 +81,12 @@ function formatTokens(value?: number | null) {
 function Badge({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "green" | "blue" | "amber" }) {
   const cls =
     tone === "green"
-      ? "bg-green-500/15 text-green-400 border-green-500/20"
+      ? "bg-emerald-500/16 text-emerald-300 border-emerald-400/20"
       : tone === "blue"
-        ? "bg-primary/15 text-primary border-primary/20"
+        ? "bg-cyan-500/14 text-cyan-300 border-cyan-400/20"
         : tone === "amber"
-          ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20"
-          : "bg-white/5 text-white/55 border-white/10";
+          ? "bg-amber-500/16 text-amber-300 border-amber-400/20"
+          : "bg-white/6 text-white/60 border-white/10";
 
   return <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-mono tracking-wide ${cls}`}>{children}</span>;
 }
@@ -83,35 +94,45 @@ function Badge({ children, tone = "default" }: { children: React.ReactNode; tone
 function ThinkingIndicator() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] text-white/70"
+      initial={{ opacity: 0, y: 8, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      className={`flex items-center gap-2.5 rounded-2xl border ${UI.borderStrong} bg-white/[0.055] px-3 py-2 text-[11px] text-white/72 backdrop-blur-sm`}
     >
       <div className="flex items-center gap-1.5">
         {[0, 1, 2].map((i) => (
           <motion.span
             key={i}
-            animate={{ y: [0, -4, 0], opacity: [0.35, 1, 0.35] }}
-            transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.12 }}
-            className="h-1.5 w-1.5 rounded-full bg-primary"
+            animate={{ y: [0, -4, 0], opacity: [0.32, 1, 0.32], scale: [0.92, 1, 0.92] }}
+            transition={{ duration: 0.95, repeat: Infinity, delay: i * 0.14, ease: "easeInOut" }}
+            className="h-2 w-2 rounded-full bg-primary"
           />
         ))}
       </div>
-      <span className="font-mono tracking-wider text-white/60">THINKING...</span>
+      <span className="font-mono tracking-[0.22em] text-white/72">THINKING</span>
+      <span className="text-white/25">·</span>
+      <span className="text-white/45">menyusun jawaban</span>
     </motion.div>
   );
 }
 
 function WritingIndicator({ text }: { text: string }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="max-w-[82%] md:max-w-[68%]">
-      <div className="rounded-2xl rounded-bl-sm border border-white/10 bg-white/5 px-3 py-2.5 text-[13px] leading-relaxed text-white/90">
+    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.99 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      className="max-w-[84%] md:max-w-[70%]"
+    >
+      <div className={`rounded-2xl rounded-bl-sm border ${UI.borderStrong} bg-gradient-to-b from-white/[0.085] to-white/[0.045] px-3.5 py-2.75 text-[13px] leading-relaxed text-white/95 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]`}>
         <pre className="whitespace-pre-wrap font-sans">
           {text}
-          <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 0.8, repeat: Infinity }} className="ml-1 inline-block h-4 w-2 bg-primary align-bottom" />
+          <motion.span
+            animate={{ opacity: [0.15, 1, 0.15], y: [0, -1, 0] }}
+            transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+            className="ml-1 inline-block h-4 w-2 rounded-sm bg-primary align-bottom"
+          />
         </pre>
       </div>
-      <div className="mt-1 px-1 text-[10px] font-mono tracking-wider text-primary/40">LIVE WRITING</div>
+      <div className="mt-1 px-1 text-[10px] font-mono tracking-[0.22em] text-cyan-300/55">LIVE WRITING</div>
     </motion.div>
   );
 }
@@ -119,21 +140,32 @@ function WritingIndicator({ text }: { text: string }) {
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}>
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.99 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 320, damping: 28 }}
+      className={`flex gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}
+    >
       {!isUser && (
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-black/60 shadow-[0_0_10px_rgba(0,255,65,0.16)]">
+        <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border ${UI.borderStrong} bg-black/70 ${UI.accentRing}`}>
           <img src="/logo.png" alt="OUWIBO" className="h-full w-full object-cover" style={{ objectPosition: "center 15%" }} />
         </div>
       )}
-      <div className={`max-w-[82%] md:max-w-[68%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
-        <div className={`rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${isUser ? "rounded-br-sm bg-primary text-black font-medium" : "rounded-bl-sm border border-white/10 bg-white/5 text-white/90"}`}>
+      <div className={`max-w-[84%] md:max-w-[70%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
+        <div
+          className={`rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed backdrop-blur-sm ${
+            isUser
+              ? "rounded-br-sm bg-primary text-black font-semibold shadow-[0_0_24px_rgba(0,255,65,0.16)]"
+              : `rounded-bl-sm border ${UI.borderStrong} bg-white/[0.055] text-white/92`
+          }`}
+        >
           <pre className="whitespace-pre-wrap font-sans">{message.content}</pre>
         </div>
-        <span className="px-1 font-mono text-[10px] text-white/20">{new Date(message.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+        <span className="px-1 font-mono text-[10px] text-white/18">{new Date(message.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
       </div>
       {isUser && (
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10">
-          <span className="text-[10px] font-semibold text-white/60">U</span>
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/12">
+          <span className="text-[10px] font-semibold text-white/65">U</span>
         </div>
       )}
     </motion.div>
@@ -276,25 +308,46 @@ export default function AgentPage() {
   const modelLabel = selectedModel?.label || model.replace(/^zo:/i, "");
 
   return (
-    <div className="relative flex h-screen overflow-hidden bg-black text-white">
+    <div className={`relative flex h-screen overflow-hidden ${UI.page} text-white selection:bg-primary/28 selection:text-black`}>
       <MatrixBackground />
 
       <AnimatePresence>
         {showSettings && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-5" onClick={(event) => event.target === event.currentTarget && setShowSettings(false)}>
-            <motion.div initial={{ opacity: 0, y: 14, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 14, scale: 0.98 }} className="w-full max-w-xl rounded-2xl border border-white/10 bg-black p-4 shadow-2xl">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/86 p-5"
+            onClick={(event) => event.target === event.currentTarget && setShowSettings(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 14, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 14, scale: 0.985 }}
+              className={`w-full max-w-xl rounded-2xl border ${UI.borderStrong} ${UI.panel} p-4 shadow-2xl`}
+            >
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-base font-semibold text-white">Model</h2>
-                  <p className="mt-1 text-xs text-white/35">Pilih model yang tersedia untuk akun kamu.</p>
+                  <p className="mt-1 text-xs text-white/34">Pilih model yang tersedia untuk akun kamu.</p>
                 </div>
                 <button onClick={() => setShowSettings(false)} className="text-white/40 transition-colors hover:text-white"><X className="h-5 w-5" /></button>
               </div>
+
               <div className="grid max-h-[52vh] gap-2 overflow-y-auto pr-1 md:grid-cols-2">
                 {models.map((item) => {
                   const active = item.model_name === model;
                   return (
-                    <button key={item.model_name} onClick={() => { setModel(item.model_name); setShowSettings(false); }} className={`rounded-xl border p-2.5 text-left transition-all ${active ? "border-primary/50 bg-primary/10" : "border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"}`}>
+                    <button
+                      key={item.model_name}
+                      onClick={() => {
+                        setModel(item.model_name);
+                        setShowSettings(false);
+                      }}
+                      className={`rounded-xl border p-2.5 text-left transition-all duration-200 ${
+                        active ? "border-primary/55 bg-primary/12 shadow-[0_0_0_1px_rgba(0,255,65,0.08)]" : "border-white/8 bg-white/[0.03] hover:border-white/16 hover:bg-white/[0.06]"
+                      }`}
+                    >
                       <div className="mb-1.5 flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium text-white">{item.label}</div>
@@ -302,7 +355,7 @@ export default function AgentPage() {
                         </div>
                         {active ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : <Globe className="h-4 w-4 shrink-0 text-white/20" />}
                       </div>
-                      <p className="mb-2 text-[11px] leading-relaxed text-white/38">{item.description || item.vendor}</p>
+                      <p className="mb-2 text-[11px] leading-relaxed text-white/40">{item.description || item.vendor}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {item.type === "free" && <Badge tone="green">FREE</Badge>}
                         {item.type === "subscribers" && <Badge tone="amber">PREMIUM</Badge>}
@@ -313,44 +366,80 @@ export default function AgentPage() {
                   );
                 })}
               </div>
+
               <div className="mt-4 flex gap-2">
-                <button onClick={() => setModel(health?.defaultModel || "zo:openai/gpt-5.4-mini")} className="rounded-xl border border-white/10 px-3.5 py-2 text-xs text-white/70 transition-colors hover:bg-white/5">Reset default</button>
-                <button onClick={() => setShowSettings(false)} className="ml-auto rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-black transition-opacity hover:opacity-90">Close</button>
+                <button
+                  onClick={() => setModel(health?.defaultModel || "zo:openai/gpt-5.4-mini")}
+                  className="rounded-xl border border-white/10 px-3.5 py-2 text-xs text-white/70 transition-colors hover:bg-white/5"
+                >
+                  Reset default
+                </button>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="ml-auto rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-black transition-all hover:opacity-95"
+                >
+                  Close
+                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <aside className="hidden w-64 flex-col border-r border-white/8 bg-black/90 backdrop-blur-xl md:flex">
+      <aside className="hidden w-64 flex-col border-r border-white/8 bg-black/92 backdrop-blur-2xl md:flex">
         <div className="border-b border-white/8 p-3.5">
           <Link href="/dashboard" className="flex items-center gap-2 text-white/50 transition-colors hover:text-white">
             <ArrowLeft className="h-4 w-4" />
             <span className="text-sm font-bold tracking-wider text-white">OUWIBO<span className="text-primary">_</span></span>
           </Link>
         </div>
+
         <div className="space-y-2 border-b border-white/6 p-3.5">
           <div className="flex items-center gap-2"><div className={`h-2 w-2 rounded-full ${health?.ok ? "bg-primary" : "bg-red-500"} animate-pulse`} /><span className="text-xs font-mono text-white/35">{health?.ok ? "SERVER ONLINE" : "SERVER OFFLINE"}</span></div>
           <div className="flex items-center gap-2"><div className={`h-2 w-2 rounded-full ${serverHasAiKey ? "bg-primary" : "bg-yellow-500"} animate-pulse`} /><span className="text-xs font-mono text-white/35">{serverHasAiKey ? "API KEY ACTIVE" : "SET ZO_API_KEY"}</span></div>
         </div>
+
         <div className="p-3 space-y-2">
-          <button onClick={() => setShowSettings(true)} className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/3 px-3 py-2.5 text-sm font-medium text-white/55 transition-all hover:bg-white/8 hover:text-white"><Settings className="h-4 w-4" />Model · {modelLabel}</button>
-          <button onClick={() => { setMessages([]); setConversationId(""); setStreamingText(""); localStorage.removeItem(CONVERSATION_STORAGE_KEY); }} disabled={loading && !messages.length} className="flex w-full items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-sm font-medium text-red-400/55 transition-all hover:bg-red-500/10 hover:text-red-400 disabled:opacity-25"><Trash2 className="h-4 w-4" />Clear Chat</button>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/4 px-3 py-2.25 text-sm font-medium text-white/60 transition-all hover:border-white/18 hover:bg-white/8 hover:text-white"
+          >
+            <Settings className="h-4 w-4" />
+            Model · {modelLabel}
+          </button>
+          <button
+            onClick={() => { setMessages([]); setConversationId(""); setStreamingText(""); localStorage.removeItem(CONVERSATION_STORAGE_KEY); }}
+            disabled={loading && !messages.length}
+            className="flex w-full items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2.25 text-sm font-medium text-red-400/60 transition-all hover:bg-red-500/10 hover:text-red-300 disabled:opacity-25"
+          >
+            <Trash2 className="h-4 w-4" />
+            Clear Chat
+          </button>
         </div>
+
         <div className="flex-1 overflow-y-auto p-3">
           <p className="mb-2 px-2 py-1 text-[10px] tracking-[0.28em] text-white/20 font-mono">QUICK PROMPTS</p>
           <div className="space-y-1.5">
-            {QUICK_PROMPTS.map((item) => (<button key={item} onClick={() => sendMessage(item)} disabled={!canSend} className="w-full rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2 text-left text-[11px] leading-relaxed text-white/35 transition-all hover:border-primary/25 hover:bg-primary/8 hover:text-white/70 disabled:opacity-20">{item}</button>))}
+            {QUICK_PROMPTS.map((item) => (
+              <button
+                key={item}
+                onClick={() => sendMessage(item)}
+                disabled={!canSend}
+                className="w-full rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2 text-left text-[11px] leading-relaxed text-white/42 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-white/80 disabled:opacity-20"
+              >
+                {item}
+              </button>
+            ))}
           </div>
         </div>
       </aside>
 
       <main className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/8 bg-black/70 px-3.5 backdrop-blur-md md:px-5">
+        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/8 bg-black/74 px-3.5 backdrop-blur-xl md:px-5">
           <Link href="/dashboard" className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-white md:hidden"><ArrowLeft className="h-4 w-4" /></Link>
           <div className="flex items-center gap-2">
             <div className={`h-2 w-2 rounded-full ${loading ? "bg-yellow-400" : "bg-primary"} animate-pulse`} />
-            <span className="font-mono text-[13px] tracking-wide text-white/60">{loading ? "OUWIBO WORKING..." : "OUWIBO AGENT // READY"}</span>
+            <span className="font-mono text-[13px] tracking-wide text-white/72">{loading ? "OUWIBO WORKING..." : "OUWIBO AGENT // READY"}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             {!serverHasAiKey && <span className="hidden rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-1 text-[11px] font-mono text-yellow-400 md:inline-flex">Add API key in Vercel env</span>}
@@ -364,11 +453,11 @@ export default function AgentPage() {
               <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="flex min-h-[52vh] flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
                   <div className="absolute inset-0 scale-125 rounded-full bg-primary/20 blur-xl animate-pulse" />
-                  <img src="/logo.png" alt="OUWIBO" className="relative h-14 w-14 rounded-full border-2 border-primary/40 object-cover shadow-[0_0_18px_rgba(0,255,65,0.3)]" style={{ objectPosition: "center 15%" }} />
+                  <img src="/logo.png" alt="OUWIBO" className="relative h-14 w-14 rounded-full border-2 border-primary/45 object-cover shadow-[0_0_18px_rgba(0,255,65,0.32)]" style={{ objectPosition: "center 15%" }} />
                 </div>
                 <div>
                   <h1 className="mb-1 text-xl font-bold text-white">OUWIBO Agent</h1>
-                  <p className="mx-auto max-w-lg text-sm leading-relaxed text-white/35">Public AI agent di atas Zo Computer. Pilih model, lalu kirim prompt langsung.</p>
+                  <p className="mx-auto max-w-lg text-sm leading-relaxed text-white/38">Public AI agent di atas Zo Computer. Pilih model, lalu kirim prompt langsung.</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <Badge tone="blue">{modelLabel}</Badge>
@@ -376,7 +465,16 @@ export default function AgentPage() {
                   {serverHasAiKey ? <Badge tone="green">API KEY ACTIVE</Badge> : <Badge tone="amber">SET ZO_API_KEY</Badge>}
                 </div>
                 <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
-                  {QUICK_PROMPTS.slice(0, 4).map((item) => (<button key={item} onClick={() => sendMessage(item)} disabled={!canSend} className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5 text-left text-[11px] leading-relaxed text-white/35 transition-all hover:border-primary/25 hover:bg-primary/8 hover:text-white/70 disabled:opacity-20">{item}</button>))}
+                  {QUICK_PROMPTS.slice(0, 4).map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => sendMessage(item)}
+                      disabled={!canSend}
+                      className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5 text-left text-[11px] leading-relaxed text-white/42 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-white/80 disabled:opacity-20"
+                    >
+                      {item}
+                    </button>
+                  ))}
                 </div>
               </motion.div>
             )}
@@ -399,12 +497,32 @@ export default function AgentPage() {
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-white/8 bg-black/70 p-3 backdrop-blur-md md:p-3.5">
+        <div className="shrink-0 border-t border-white/8 bg-black/74 p-3 backdrop-blur-xl md:p-3.5">
           <div className="mx-auto flex max-w-3xl items-end gap-2">
             <div className="relative flex-1">
-              <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={handleKey} disabled={!canSend || loading} placeholder={serverHasAiKey ? `Tulis prompt untuk ${modelLabel}...` : "Tambahkan API key di Vercel dulu..."} rows={1} className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-primary/50 disabled:opacity-40" style={{ maxHeight: 96, overflowY: "auto" }} onInput={(event) => { const target = event.target as HTMLTextAreaElement; target.style.height = "auto"; target.style.height = `${Math.min(target.scrollHeight, 96)}px`; }} />
+              <textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={handleKey}
+                disabled={!canSend || loading}
+                placeholder={serverHasAiKey ? `Tulis prompt untuk ${modelLabel}...` : "Tambahkan API key di Vercel dulu..."}
+                rows={1}
+                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-3.5 py-2.5 text-[13px] text-white placeholder-white/24 focus:outline-none focus:border-primary/55 disabled:opacity-40"
+                style={{ maxHeight: 96, overflowY: "auto" }}
+                onInput={(event) => {
+                  const target = event.target as HTMLTextAreaElement;
+                  target.style.height = "auto";
+                  target.style.height = `${Math.min(target.scrollHeight, 96)}px`;
+                }}
+              />
             </div>
-            <button onClick={() => sendMessage()} disabled={!input.trim() || !canSend || loading} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-black shadow-[0_0_16px_rgba(0,255,65,0.3)] transition-all hover:scale-105 hover:shadow-[0_0_24px_rgba(0,255,65,0.45)] active:scale-95 disabled:opacity-25">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</button>
+            <button
+              onClick={() => sendMessage()}
+              disabled={!input.trim() || !canSend || loading}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-black shadow-[0_0_16px_rgba(0,255,65,0.34)] transition-all hover:scale-105 hover:shadow-[0_0_24px_rgba(0,255,65,0.5)] active:scale-95 disabled:opacity-25"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
           </div>
           <p className="mt-2 text-center font-mono text-[10px] tracking-wider text-white/12">ENTER · SHIFT+ENTER baru baris · model: {modelLabel}</p>
         </div>
