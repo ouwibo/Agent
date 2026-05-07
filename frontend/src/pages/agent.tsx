@@ -126,8 +126,8 @@ function MessageBubble({ msg }: { msg: Message }) {
       className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
-        <div className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 mt-0.5">
-          <Bot className="w-4 h-4 text-primary" />
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/40 shadow-[0_0_8px_rgba(0,255,65,0.25)] shrink-0 mt-0.5">
+          <img src="/logo.png" alt="OUWIBO" className="w-full h-full object-cover" style={{ objectPosition: "center 15%" }} />
         </div>
       )}
       <div className={`max-w-[85%] md:max-w-[72%] space-y-2 flex flex-col ${isUser ? "items-end" : "items-start"}`}>
@@ -529,8 +529,14 @@ export default function AgentPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col items-center justify-center h-full text-center gap-5 py-10"
               >
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center">
-                  <Bot className="w-8 h-8 text-primary" />
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl scale-125 animate-pulse" />
+                  <img
+                    src="/logo.png"
+                    alt="OUWIBO"
+                    className="relative w-16 h-16 rounded-full object-cover border-2 border-primary/40 shadow-[0_0_20px_rgba(0,255,65,0.35)]"
+                    style={{ objectPosition: "center 15%" }}
+                  />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white mb-1">OUWIBO Agent</h2>
@@ -579,8 +585,11 @@ export default function AgentPage() {
             {/* Streaming */}
             {streamingMsg && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 mt-0.5">
-                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/40 shadow-[0_0_8px_rgba(0,255,65,0.25)] shrink-0 mt-0.5 relative">
+                  <img src="/logo.png" alt="OUWIBO" className="w-full h-full object-cover" style={{ objectPosition: "center 15%" }} />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  </div>
                 </div>
                 <div className="max-w-[85%] md:max-w-[72%] space-y-2">
                   {streamingMsg.toolCalls.length > 0 && (

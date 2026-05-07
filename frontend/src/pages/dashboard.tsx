@@ -114,9 +114,17 @@ export default function Dashboard() {
       >
         <div className="p-5 border-b border-primary/20 flex items-center justify-between">
           <Link href="/">
-            <h2 className="text-xl font-bold text-white tracking-widest drop-shadow-[0_0_5px_rgba(0,255,65,0.8)] cursor-pointer hover:text-primary transition-colors">
-              OUWIBO<span className="text-primary animate-pulse">_</span>
-            </h2>
+            <div className="flex items-center gap-2.5 cursor-pointer group">
+              <img
+                src="/logo.png"
+                alt="OUWIBO"
+                className="w-8 h-8 rounded-full object-cover border border-primary/40 shadow-[0_0_10px_rgba(0,255,65,0.3)]"
+                style={{ objectPosition: "center 15%" }}
+              />
+              <h2 className="text-xl font-bold text-white tracking-widest drop-shadow-[0_0_5px_rgba(0,255,65,0.8)] group-hover:text-primary transition-colors">
+                OUWIBO<span className="text-primary animate-pulse">_</span>
+              </h2>
+            </div>
           </Link>
           <button
             className="md:hidden text-primary/60 hover:text-primary transition-colors"
