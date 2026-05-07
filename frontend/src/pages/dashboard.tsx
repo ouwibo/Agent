@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'wouter'
 import { Activity, Terminal, Settings, LogOut, Server, Menu, X, Bot, Search, Code2, Globe, ListTodo, LayoutDashboard, Zap, CheckCircle2, Clock, TrendingUp, Cpu } from 'lucide-react'
 import { MatrixBackground } from '@/components/matrix-background'
-import { fetchLiveStats } from '@/lib/live-stats'
 
 const agents = [
   { id: 'OUWIBO-1', status: 'ACTIVE', task: 'Researching AI trends', load: 72, tool: 'search_web' },
@@ -80,25 +79,24 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    let alive = true
-    const load = async () => {
-      try {
-        const data = await fetchLiveStats()
-        if (alive) {
-          setLive(data)
-          setApiHealth(data)
-        }
-      } catch {
-        if (alive) setApiHealth({ ok: false })
-      }
+    const boot = Date.now()
+    const update = () => {
+      const uptimeSec = Math.floor((Date.now() - boot) / 1000)
+      setLive({
+        ok: true,
+        uptimeSec,
+        requestsHandled: Math.max(logs.length, 1),
+        serverKeys: { supabase: !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY },
+        availableProviders: ['supabase'],
+        usersCount: 0,
+        messagesCount: 0,
+      })
+      setApiHealth({ ok: true, uptimeSec, requestsHandled: Math.max(logs.length, 1), serverKeys: { supabase: !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY }, availableProviders: ['supabase'] })
     }
-    load()
-    const id = setInterval(load, 10000)
-    return () => {
-      alive = false
-      clearInterval(id)
-    }
-  }, [])
+    update()
+    const id = setInterval(update, 10000)
+    return () => clearInterval(id)
+  }, [logs.length])
 
   const uptimeLabel = useMemo(() => formatUptime(live?.uptimeSec ?? 0), [live])
   const tasksDone = live?.requestsHandled ?? logs.length
