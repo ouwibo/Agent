@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { MatrixBackground } from "@/components/matrix-background";
-import { Globe, Code2, BrainCircuit, Zap, ArrowRight, Bot, Search, ListTodo, LayoutDashboard } from "lucide-react";
+import { Globe, Code2, Zap, ArrowRight, Bot, Search, ListTodo, LayoutDashboard } from "lucide-react";
 
 const capabilities = [
   { icon: Search, title: "Web Search", desc: "Searches the internet in real-time to gather up-to-date information on any topic.", tag: "TOOL" },
@@ -59,7 +59,15 @@ export default function Home() {
           transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           className="mb-3 flex flex-col items-center"
         >
-          <BrainCircuit className="w-10 h-10 text-primary opacity-80 mb-2" />
+          <div className="mb-4 relative">
+            <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl scale-150 animate-pulse" />
+            <img
+              src="/logo.png"
+              alt="OUWIBO Agent"
+              className="relative w-28 h-28 rounded-full object-cover border-2 border-primary/40 shadow-[0_0_32px_rgba(0,255,65,0.35)]"
+              style={{ objectPosition: "center 15%" }}
+            />
+          </div>
           <h1
             className="glitch-text font-bold leading-none select-none"
             style={{
