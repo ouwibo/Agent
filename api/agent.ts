@@ -3,16 +3,28 @@ export const config = { runtime: 'edge' };
 const AI_API_URL = "https://ollama.com/api";
 const AI_API_KEY = process.env.AI_API_KEY || "";
 
-const SYSTEM_PROMPT = `You are OUWIBO, an autonomous AI agent. You help users with:
-- Coding and programming tasks
-- Research and analysis
-- Problem solving and planning
-- Technical explanations
+const SYSTEM_PROMPT = `You are OUWIBO, a professional cryptocurrency and DeFi AI analyst. You specialize in:
 
-Be concise, accurate, and helpful. Use markdown formatting for code blocks and structured responses.
-Always respond in the same language the user uses.
+- **Market Analysis**: Real-time price trends, market sentiment, technical indicators
+- **DeFi Protocols**: Yield farming, liquidity pools, staking, governance tokens
+- **Trading Signals**: Entry/exit points, support/resistance levels, risk assessment
+- **Blockchain Analysis**: Network metrics, on-chain data, whale movements
+- **Token Research**: Fundamental analysis, tokenomics, project evaluation
 
-When showing code, use proper markdown code blocks with language specification.`;
+When analyzing:
+1. Provide data-driven insights with clear reasoning
+2. Include relevant metrics and indicators when available
+3. Consider both bullish and bearish scenarios
+4. Highlight risks and opportunities
+5. Be objective and avoid financial advice disclaimers unless specifically about investment decisions
+
+Format your responses with:
+- Clear headings using **bold**
+- Bullet points for lists
+- Code blocks for any technical data or configurations
+- Tables for comparisons when appropriate
+
+You are helpful, precise, and professional. Respond in the same language the user uses.`;
 
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
@@ -24,7 +36,7 @@ export default async function handler(req: Request) {
     const { input, model_name = "gemma3:4b", history = [] } = body;
 
     if (!input || !input.trim()) {
-      return new Response(JSON.stringify({ error: 'Input is required' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Input required' }), { status: 400 });
     }
 
     if (!AI_API_KEY) {
@@ -33,7 +45,7 @@ export default async function handler(req: Request) {
 
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
-      ...history.slice(-10).map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
+      ...history.slice(-10).map((m: any) => ({ role: m.role, content: m.content })),
       { role: "user", content: input.trim() }
     ];
 
@@ -51,33 +63,32 @@ export default async function handler(req: Request) {
       return new Response(JSON.stringify({ error: `AI error: ${response.status}` }), { status: response.status });
     }
 
-    if (!response.body) {
-      return new Response(JSON.stringify({ error: 'No response body' }), { status: 500 });
-    }
-
     const encoder = new TextEncoder();
-    const reader = response.body.getReader();
-    
+    const reader = response.body!.getReader();
+
     const stream = new ReadableStream({
       async start(controller) {
         const decoder = new TextDecoder();
-        
+
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            
+
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n').filter((l: string) => l.trim());
-            
+            const lines = chunk.split('\n').filter(l => l.trim());
+
             for (const line of lines) {
               try {
                 const parsed = JSON.parse(line);
-                // Only use 'content', ignore 'thinking' (internal reasoning)
+                
+                // Handle both 'content' and 'thinking' fields
                 const content = parsed.message?.content || '';
+                
                 if (content) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text', content })}\n\n`));
                 }
+                
                 if (parsed.done) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
                 }
@@ -99,8 +110,7 @@ export default async function handler(req: Request) {
         'Connection': 'keep-alive',
       },
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: message }), { status: 500 });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 }

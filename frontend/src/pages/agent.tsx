@@ -6,7 +6,6 @@ import {
   Bot,
   CheckCircle2,
   Globe,
-  LayoutDashboard,
   Loader2,
   Send,
   Settings,
@@ -14,32 +13,44 @@ import {
   X,
   Copy,
   Check,
-  Code,
-  Sparkles,
-  Search,
-  FileText,
-  Calculator,
-  Globe2,
-  Database,
-  Cpu,
-  BookOpen,
+  Bitcoin,
+  TrendingUp,
+  BarChart3,
+  Newspaper,
   Zap,
-  ChevronDown,
 } from "lucide-react";
 import { MatrixBackground } from "@/components/matrix-background";
+import { marked } from "marked";
+import hljs from "highlight.js/lib/core";
+import javascript from "highlight.js/lib/languages/javascript";
+import typescript from "highlight.js/lib/languages/typescript";
+import python from "highlight.js/lib/languages/python";
+import rust from "highlight.js/lib/languages/rust";
+import go from "highlight.js/lib/languages/go";
+import bash from "highlight.js/lib/languages/bash";
+import json from "highlight.js/lib/languages/json";
+import sql from "highlight.js/lib/languages/sql";
+
+// Register languages
+hljs.registerLanguage("javascript", javascript);
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("rust", rust);
+hljs.registerLanguage("go", go);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("json", json);
+hljs.registerLanguage("sql", sql);
+
+// Import highlight.js styles
+import "highlight.js/styles/github-dark.css";
 
 const UI = {
   page: "bg-[#050608]",
   panel: "bg-zinc-950/94",
-  panelSoft: "bg-white/[0.045]",
   border: "border-white/10",
   borderStrong: "border-white/15",
   accent: "text-primary",
-  accentBg: "bg-primary/16",
-  accentRing: "shadow-[0_0_24px_rgba(0,255,65,0.18)]",
 };
-
-type ChatMode = "long";
 
 interface Message {
   id: string;
@@ -61,7 +72,6 @@ interface AIModel {
   description?: string | null;
   type?: string | null;
   context_window?: number | null;
-  is_byok?: boolean;
 }
 
 interface ModelsResponse {
@@ -71,74 +81,28 @@ interface ModelsResponse {
 }
 
 const BACKEND = "/api";
-const MODEL_STORAGE_KEY = "ouwibo_model";
-const CONVERSATION_STORAGE_KEY = "ouwibo_conversation";
+const MODEL_STORAGE_KEY = "ouwibo_crypto_model";
+const CONVERSATION_STORAGE_KEY = "ouwibo_crypto_conversation";
 
 const FALLBACK_MODELS: AIModel[] = [
-  { model_name: "gemma3:4b", label: "Gemma 3 4B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Ultra lightweight, fast responses" },
-  { model_name: "gemma3:12b", label: "Gemma 3 12B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Lightweight, fast responses" },
-  { model_name: "gemma3:27b", label: "Gemma 3 27B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Balanced performance" },
-  { model_name: "gemma4:31b", label: "Gemma 4 31B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Latest Gemma, excellent reasoning" },
-  { model_name: "gpt-oss:20b", label: "GPT-OSS 20B", vendor: "Open Source", type: "free", context_window: 128000, is_byok: false, description: "General purpose, fast and capable" },
-  { model_name: "qwen3-coder-next", label: "Qwen3 Coder", vendor: "Alibaba", type: "free", context_window: 128000, is_byok: false, description: "Specialized for code tasks" },
-  { model_name: "nemotron-3-nano:30b", label: "Nemotron 3 Nano", vendor: "NVIDIA", type: "free", context_window: 128000, is_byok: false, description: "Efficient and accurate" },
-  { model_name: "devstral-small-2:24b", label: "Devstral 2", vendor: "Mistral", type: "free", context_window: 128000, is_byok: false, description: "Code-focused model" },
+  { model_name: "gemma3:4b", label: "Gemma 3 4B", vendor: "Google", type: "free", context_window: 128000, description: "Fast and efficient" },
+  { model_name: "gemma3:12b", label: "Gemma 3 12B", vendor: "Google", type: "free", context_window: 128000, description: "Balanced performance" },
+  { model_name: "gemma3:27b", label: "Gemma 3 27B", vendor: "Google", type: "free", context_window: 128000, description: "High quality responses" },
+  { model_name: "gemma4:31b", label: "Gemma 4 31B", vendor: "Google", type: "free", context_window: 128000, description: "Latest model, best reasoning" },
+  { model_name: "gpt-oss:20b", label: "GPT-OSS 20B", vendor: "Open Source", type: "free", context_window: 128000, description: "General purpose" },
+  { model_name: "qwen3-coder-next", label: "Qwen3 Coder", vendor: "Alibaba", type: "free", context_window: 128000, description: "Code specialist" },
 ];
 
-const SKILLS = [
-  { icon: Search, name: "Web Search", desc: "Search the internet for real-time information", color: "text-cyan-400" },
-  { icon: Code, name: "Code Writing", desc: "Write, debug and explain code in any language", color: "text-yellow-400" },
-  { icon: Globe2, name: "Browse URLs", desc: "Visit websites and extract information", color: "text-green-400" },
-  { icon: FileText, name: "Content Writing", desc: "Create articles, reports, and documentation", color: "text-purple-400" },
-  { icon: Calculator, name: "Data Analysis", desc: "Analyze and visualize data", color: "text-orange-400" },
-  { icon: Database, name: "File Operations", desc: "Read, write, and manage files", color: "text-pink-400" },
-  { icon: Cpu, name: "Task Planning", desc: "Break complex goals into actionable steps", color: "text-blue-400" },
-  { icon: BookOpen, name: "Research", desc: "Deep research on any topic", color: "text-emerald-400" },
+const CRYPTO_PROMPTS = [
+  "Analyze BTC current trend",
+  "What's the ETH price outlook?",
+  "Compare SOL vs BNB performance",
+  "Market sentiment analysis today",
+  "Top crypto gainers this week",
+  "DeFi protocol analysis",
 ];
 
-const QUICK_PROMPTS = [
-  "Research the latest AI trends and write a summary report",
-  "Build me a Python web scraper for product prices",
-  "Create a 30-day learning plan for machine learning",
-  "Find the top 5 competitors of Tesla and analyze them",
-  "Write a REST API in Node.js with authentication",
-  "Explain how transformer models work with code examples",
-];
-
-function formatTokens(value?: number | null) {
-  if (!value) return "-";
-  return value >= 1000000 ? `${Math.round(value / 100000) / 10}M` : `${Math.round(value / 1000)}k`;
-}
-
-function Badge({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "green" | "blue" | "amber" }) {
-  const cls =
-    tone === "green"
-      ? "bg-emerald-500/16 text-emerald-300 border-emerald-400/20"
-      : tone === "blue"
-        ? "bg-cyan-500/14 text-cyan-300 border-cyan-400/20"
-        : tone === "amber"
-          ? "bg-amber-500/16 text-amber-300 border-amber-400/20"
-          : "bg-white/6 text-white/60 border-white/10";
-
-  return <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-mono tracking-wide ${cls}`}>{children}</span>;
-}
-
-function LoadingDots() {
-  return (
-    <div className="flex items-center gap-1">
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
-          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
-          className="h-2 w-2 rounded-full bg-primary"
-        />
-      ))}
-    </div>
-  );
-}
-
-function CodeBlock({ code, language }: { code: string; language: string }) {
+function CodeBlock({ code, language }: { code: string; language?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -147,90 +111,114 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const highlighted = language ? hljs.highlight(code, { language }).value : hljs.highlightAuto(code).value;
+
   return (
-    <div className="relative my-3 rounded-xl border border-white/10 bg-zinc-900/80 overflow-hidden">
-      <div className="flex items-center justify-between bg-zinc-800/80 px-3 py-1.5 border-b border-white/5">
-        <span className="text-[11px] font-mono text-white/50">{language || "code"}</span>
+    <div className="relative group my-3 rounded-lg overflow-hidden bg-zinc-900 border border-white/10">
+      <div className="flex items-center justify-between px-3 py-2 bg-zinc-800/50 border-b border-white/10">
+        <span className="text-xs text-white/50 font-mono">{language || "code"}</span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white transition-colors"
+          className="flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors"
         >
-          {copied ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
-          {copied ? "Copied!" : "Copy"}
+          {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+          {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre className="overflow-x-auto p-3 text-[13px] font-mono text-white/90 leading-relaxed">
-        <code>{code}</code>
+      <pre className="p-3 overflow-x-auto text-sm">
+        <code dangerouslySetInnerHTML={{ __html: highlighted }} />
       </pre>
     </div>
   );
 }
 
-function renderContent(content: string) {
-  const parts: React.ReactNode[] = [];
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-  let lastIndex = 0;
-  let key = 0;
-
-  for (const match of content.matchAll(codeBlockRegex)) {
-    const index = match.index ?? 0;
-    if (index > lastIndex) {
-      parts.push(
-        <span key={`t-${key++}`} className="whitespace-pre-wrap text-[14px] leading-relaxed">
-          {content.slice(lastIndex, index)}
-        </span>
-      );
-    }
-
-    const language = match[1] || "";
-    const code = match[2].trim();
-    parts.push(<CodeBlock key={`c-${key++}`} code={code} language={language} />);
-
-    lastIndex = index + match[0].length;
-  }
-
-  if (lastIndex < content.length) {
-    parts.push(
-      <span key={`t-${key++}`} className="whitespace-pre-wrap text-[14px] leading-relaxed">
-        {content.slice(lastIndex)}
-      </span>
-    );
-  }
-
-  return parts.length > 0 ? <>{parts}</> : <span className="whitespace-pre-wrap text-[14px] leading-relaxed">{content}</span>;
+function LoadingDots() {
+  return (
+    <div className="flex items-center gap-1.5 px-3 py-2">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+          className="w-2 h-2 rounded-full bg-primary"
+        />
+      ))}
+    </div>
+  );
 }
 
-function MessageBubble({ message }: { message: Message }) {
-  const isUser = message.role === "user";
+function StreamingMessage({ text }: { text: string }) {
+  const rendered = useMemo(() => {
+    // Parse markdown and render
+    let html = marked(text) as string;
+    return html;
+  }, [text]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      className="max-w-[85%] md:max-w-[75%]"
+    >
+      <div className="rounded-2xl rounded-bl-sm border border-white/15 bg-white/[0.06] px-4 py-3 text-sm leading-relaxed text-white/95 backdrop-blur-sm">
+        <div 
+          className="prose prose-invert prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: rendered }}
+        />
+        <motion.span
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 0.8, repeat: Infinity }}
+          className="inline-block w-1.5 h-4 bg-primary ml-0.5 rounded-sm"
+        />
+      </div>
+    </motion.div>
+  );
+}
+
+function MessageBubble({ message }: { message: Message }) {
+  const isUser = message.role === "user";
+  
+  const rendered = useMemo(() => {
+    if (isUser) return message.content;
+    return marked(message.content) as string;
+  }, [message.content, isUser]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
+      className={`flex gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 border border-primary/30">
-          <Bot className="h-4 w-4 text-primary" />
+        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+          <Bitcoin className="w-4 h-4 text-primary" />
         </div>
       )}
-      <div className={`max-w-[85%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
+      <div className={`max-w-[85%] md:max-w-[75%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
         <div
-          className={`rounded-2xl px-4 py-3 backdrop-blur-sm ${
+          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed backdrop-blur-sm ${
             isUser
-              ? "rounded-tr-sm bg-primary text-black font-medium"
-              : "rounded-tl-sm border border-white/10 bg-white/[0.03] text-white/90"
+              ? "rounded-br-sm bg-primary text-black font-medium"
+              : "rounded-bl-sm border border-white/15 bg-white/[0.06] text-white/95"
           }`}
         >
-          {isUser ? <span className="text-[14px]">{message.content}</span> : renderContent(message.content)}
+          {isUser ? (
+            <span className="whitespace-pre-wrap">{message.content}</span>
+          ) : (
+            <div 
+              className="prose prose-invert prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: rendered }}
+            />
+          )}
         </div>
-        <span className="px-1 text-[10px] text-white/30">
+        <span className="px-1 text-[10px] text-white/30 font-mono">
           {new Date(message.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>
       {isUser && (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 border border-white/15">
-          <span className="text-[11px] font-semibold text-white/70">U</span>
+        <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
+          <span className="text-xs font-semibold text-white/60">U</span>
         </div>
       )}
     </motion.div>
@@ -243,13 +231,9 @@ export default function AgentPage() {
   const [loading, setLoading] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const [showSkills, setShowSkills] = useState(false);
   const [health, setHealth] = useState<HealthData | null>(null);
   const [models, setModels] = useState<AIModel[]>(FALLBACK_MODELS);
-  const [conversationId, setConversationId] = useState<string | null>(() => localStorage.getItem(CONVERSATION_STORAGE_KEY));
-  const [streamConversationId, setStreamConversationId] = useState<string | null>(null);
   const [model, setModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || "gemma3:4b");
-  const [mode, setMode] = useState<ChatMode>(() => (localStorage.getItem("ouwibo_chat_mode") as ChatMode) || "long");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -257,18 +241,18 @@ export default function AgentPage() {
   }, [messages, streamingText]);
 
   useEffect(() => {
-    fetch(`${BACKEND}/health`, { headers: { Accept: "application/json" } })
+    fetch(`${BACKEND}/health`)
       .then((res) => res.json())
       .then((data) => setHealth(data))
       .catch(() => setHealth({ ok: false, serverKeys: { ai: false } }));
 
-    fetch(`${BACKEND}/models`, { headers: { Accept: "application/json" } })
+    fetch(`${BACKEND}/models`)
       .then(async (res) => {
-        const data = (await res.json().catch(() => null)) as ModelsResponse | null;
-        if (!res.ok || !data?.models?.length) throw new Error("no models");
+        const data = await res.json().catch(() => null) as ModelsResponse | null;
+        if (!res.ok || !data?.models?.length) throw new Error("No models");
         setModels(data.models);
-        const nextModel = data.recommendedModel || data.models.find((m) => m.type === "free")?.model_name || data.models[0].model_name;
-        setModel((prev) => (data.models.some((m) => m.model_name === prev) ? prev : nextModel));
+        const nextModel = data.recommendedModel || data.models[0]?.model_name;
+        setModel((prev) => (data.models.some((m) => m.model_name === prev) ? prev : nextModel || "gemma3:4b"));
       })
       .catch(() => setModels(FALLBACK_MODELS));
   }, []);
@@ -277,44 +261,40 @@ export default function AgentPage() {
     localStorage.setItem(MODEL_STORAGE_KEY, model);
   }, [model]);
 
-  useEffect(() => {
-    localStorage.setItem("ouwibo_chat_mode", mode);
-  }, [mode]);
-
-  useEffect(() => {
-    if (conversationId) localStorage.setItem(CONVERSATION_STORAGE_KEY, conversationId);
-    else localStorage.removeItem(CONVERSATION_STORAGE_KEY);
-  }, [conversationId]);
-
   const serverHasAiKey = !!health?.serverKeys?.ai;
   const canSend = serverHasAiKey && !!model && !loading;
-  const selectedModel = useMemo(() => models.find((item) => item.model_name === model) || models[0], [model, models]);
+  const selectedModel = useMemo(() => models.find((m) => m.model_name === model) || models[0], [model, models]);
 
   const sendMessage = useCallback(async (text?: string) => {
     const prompt = (text || input).trim();
     if (!prompt || loading || !canSend) return;
 
-    const userMessage: Message = { id: `u-${Date.now()}`, role: "user", content: prompt, createdAt: new Date().toISOString() };
+    const userMessage: Message = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      content: prompt,
+      createdAt: new Date().toISOString(),
+    };
+
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
     setStreamingText("");
+
     try {
       const response = await fetch(`${BACKEND}/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ input: prompt, conversation_id: conversationId, model_name: model, mode }),
+        body: JSON.stringify({ input: prompt, model_name: model }),
       });
+
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
         throw new Error(err.error || "Server error");
       }
 
-      const nextConversationId = response.headers.get("x-conversation-id");
-      if (nextConversationId) setStreamConversationId(nextConversationId);
-
       const reader = response.body?.getReader();
-      if (!reader) throw new Error("Streaming response unavailable");
+      if (!reader) throw new Error("No response stream");
 
       const decoder = new TextDecoder();
       let buffer = "";
@@ -323,6 +303,7 @@ export default function AgentPage() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
@@ -332,35 +313,41 @@ export default function AgentPage() {
           const raw = line.slice(6).trim();
           if (!raw) continue;
 
-          let evt: { type?: string; content?: string; message?: string } | null = null;
           try {
-            evt = JSON.parse(raw);
-          } catch {
-            continue;
+            const evt = JSON.parse(raw);
+            if (evt?.type === "text" && evt.content) {
+              finalText += evt.content;
+              setStreamingText(finalText);
+            }
+            if (evt?.type === "error") throw new Error(evt.message);
+            if (evt?.type === "done") break;
+          } catch (e) {
+            if (e instanceof SyntaxError) continue;
+            throw e;
           }
-
-          if (evt?.type === "text" && evt.content) {
-            finalText += evt.content;
-            setStreamingText(finalText);
-          }
-          if (evt?.type === "error") throw new Error(evt.message || "AI error");
-          if (evt?.type === "done") break;
         }
       }
 
-      if (streamConversationId) setConversationId(streamConversationId);
-      else if (nextConversationId) setConversationId(nextConversationId);
-
-      setMessages((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: finalText.trim() || "(no response)", createdAt: new Date().toISOString() }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: "assistant",
+          content: finalText.trim() || "(No response)",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      setMessages((prev) => [...prev, { id: `e-${Date.now()}`, role: "assistant", content: `⚠️ ${message}`, createdAt: new Date().toISOString() }]);
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      setMessages((prev) => [
+        ...prev,
+        { id: `e-${Date.now()}`, role: "assistant", content: `⚠️ ${msg}`, createdAt: new Date().toISOString() },
+      ]);
     } finally {
       setLoading(false);
       setStreamingText("");
-      setStreamConversationId(null);
     }
-  }, [canSend, conversationId, input, loading, model, mode, streamConversationId]);
+  }, [canSend, input, loading, model]);
 
   const handleKey = (event: React.KeyboardEvent) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -372,200 +359,8 @@ export default function AgentPage() {
   const modelLabel = selectedModel?.label || model;
 
   return (
-    <div className={`flex h-screen overflow-hidden ${UI.page} text-white`}>
+    <div className={`relative flex h-screen overflow-hidden ${UI.page} text-white selection:bg-primary/20`}>
       <MatrixBackground />
-
-      {/* Sidebar */}
-      <aside className="hidden w-72 flex-col border-r border-white/8 bg-black/90 backdrop-blur-xl md:flex">
-        <div className="border-b border-white/8 p-4">
-          <Link href="/dashboard" className="flex items-center gap-2 text-white/50 hover:text-white transition-colors">
-            <LayoutDashboard className="h-4 w-4" />
-            <span className="text-base font-bold">OUWIBO<span className="text-primary">_</span></span>
-          </Link>
-        </div>
-
-        {/* Status */}
-        <div className="border-b border-white/8 p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${health?.ok ? "bg-green-500" : "bg-red-500"}`} />
-            <span className="text-xs text-white/50">{health?.ok ? "Online" : "Offline"}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs text-white/70 font-medium">{modelLabel}</span>
-          </div>
-        </div>
-
-        {/* Skills */}
-        <div className="border-b border-white/8 p-4">
-          <button
-            onClick={() => setShowSkills(!showSkills)}
-            className="flex items-center justify-between w-full text-left"
-          >
-            <span className="text-xs font-mono text-white/40 tracking-wider">SKILLS</span>
-            <ChevronDown className={`h-3 w-3 text-white/40 transition-transform ${showSkills ? "rotate-180" : ""}`} />
-          </button>
-          {showSkills && (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {SKILLS.map((skill, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 p-2 rounded-lg border border-white/5 bg-white/[0.02] hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer"
-                >
-                  <skill.icon className={`h-4 w-4 ${skill.color}`} />
-                  <span className="text-[11px] text-white/60 truncate">{skill.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="p-4 space-y-2">
-          <button
-            onClick={() => setShowSettings(true)}
-            className="flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-all"
-          >
-            <Settings className="h-4 w-4" />
-            Change Model
-          </button>
-          <button
-            onClick={() => { setMessages([]); setConversationId(""); localStorage.removeItem(CONVERSATION_STORAGE_KEY); }}
-            className="flex w-full items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-sm text-red-400/70 hover:bg-red-500/10 transition-all"
-          >
-            <Trash2 className="h-4 w-4" />
-            Clear Chat
-          </button>
-        </div>
-
-        {/* Quick Prompts */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <p className="text-xs font-mono text-white/40 tracking-wider mb-3">QUICK PROMPTS</p>
-          <div className="space-y-2">
-            {QUICK_PROMPTS.map((item, i) => (
-              <button
-                key={i}
-                onClick={() => sendMessage(item)}
-                disabled={!canSend || loading}
-                className="w-full rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2.5 text-left text-[12px] leading-relaxed text-white/50 hover:border-primary/20 hover:bg-primary/5 hover:text-white/80 disabled:opacity-30 transition-all"
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Chat Area */}
-      <main className="relative flex flex-1 flex-col">
-        {/* Header */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/8 bg-black/80 px-4 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="flex items-center gap-1.5 text-white/40 hover:text-white md:hidden">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${loading ? "bg-yellow-400 animate-pulse" : "bg-primary"}`} />
-              <span className="text-sm font-medium text-white/80">
-                {loading ? "Generating..." : "OUWIBO Agent"}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge tone="blue">{modelLabel}</Badge>
-            <button onClick={() => setShowSettings(true)} className="md:hidden text-white/40 hover:text-white">
-              <Settings className="h-5 w-5" />
-            </button>
-          </div>
-        </header>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-            {messages.length === 0 && !streamingText && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center gap-6 py-12">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-                  <Bot className="h-8 w-8 text-primary" />
-                </div>
-                <div className="text-center">
-                  <h1 className="text-2xl font-bold text-white mb-2">OUWIBO Agent</h1>
-                  <p className="text-white/40 max-w-md">An autonomous AI assistant with web search, code writing, and task planning capabilities.</p>
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Badge tone="blue">{modelLabel}</Badge>
-                  {selectedModel?.type === "free" && <Badge tone="green">FREE</Badge>}
-                  {serverHasAiKey ? <Badge tone="green">READY</Badge> : <Badge tone="amber">SETUP REQUIRED</Badge>}
-                </div>
-                <div className="grid w-full max-w-xl grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                  {QUICK_PROMPTS.slice(0, 4).map((item, i) => (
-                    <button
-                      key={i}
-                      onClick={() => sendMessage(item)}
-                      disabled={!canSend || loading}
-                      className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-[13px] leading-relaxed text-white/50 hover:border-primary/30 hover:bg-primary/5 hover:text-white/80 disabled:opacity-30 transition-all"
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            <AnimatePresence initial={false}>
-              {messages.map((message) => <MessageBubble key={message.id} message={message} />)}
-            </AnimatePresence>
-
-            {streamingText && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20">
-                  <Bot className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1 rounded-2xl rounded-tl-sm border border-white/10 bg-white/[0.03] px-4 py-3">
-                  {renderContent(streamingText)}
-                  <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-1" />
-                </div>
-              </motion.div>
-            )}
-
-            {loading && !streamingText && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 text-white/50">
-                <LoadingDots />
-                <span className="text-sm">Generating response...</span>
-              </motion.div>
-            )}
-
-            <div ref={bottomRef} />
-          </div>
-        </div>
-
-        {/* Input */}
-        <div className="shrink-0 border-t border-white/8 bg-black/80 p-4 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-3xl items-end gap-3">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              disabled={!canSend || loading}
-              placeholder={serverHasAiKey ? `Message ${modelLabel}...` : "Setup required..."}
-              rows={1}
-              className="flex-1 resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/40 disabled:opacity-40"
-              style={{ maxHeight: 120 }}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = "auto";
-                target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
-              }}
-            />
-            <button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || !canSend || loading}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-black transition-all hover:opacity-90 active:scale-95 disabled:opacity-30"
-            >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-            </button>
-          </div>
-        </div>
-      </main>
 
       {/* Settings Modal */}
       <AnimatePresence>
@@ -574,57 +369,222 @@ export default function AgentPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
             onClick={(e) => e.target === e.currentTarget && setShowSettings(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg rounded-2xl border border-white/10 bg-zinc-900 p-5"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-lg rounded-2xl border border-white/15 bg-zinc-950 p-5 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Select Model</h2>
-                <button onClick={() => setShowSettings(false)} className="text-white/40 hover:text-white">
-                  <X className="h-5 w-5" />
+                <h2 className="text-lg font-semibold">Model Selection</h2>
+                <button onClick={() => setShowSettings(false)} className="text-white/50 hover:text-white">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-2">
+              <div className="grid gap-2 max-h-[50vh] overflow-y-auto">
                 {models.map((item) => {
                   const active = item.model_name === model;
                   return (
                     <button
                       key={item.model_name}
                       onClick={() => { setModel(item.model_name); setShowSettings(false); }}
-                      className={`w-full rounded-xl border p-3 text-left transition-all ${
+                      className={`p-3 rounded-xl text-left transition-all ${
                         active
-                          ? "border-primary/40 bg-primary/10"
-                          : "border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]"
-                      }`}
+                          ? "bg-primary/15 border-primary/50"
+                          : "bg-white/5 hover:bg-white/10 border-white/10"
+                      } border`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-[14px]">{item.label}</span>
-                        {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                        <span className="font-medium">{item.label}</span>
+                        {active && <CheckCircle2 className="w-4 h-4 text-primary" />}
                       </div>
-                      <p className="text-[12px] text-white/40">{item.description || item.vendor}</p>
+                      <div className="text-xs text-white/50">{item.vendor} · {item.description}</div>
                     </button>
                   );
                 })}
               </div>
 
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-black hover:opacity-90"
-                >
-                  Close
-                </button>
-              </div>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="mt-4 w-full py-2.5 bg-primary text-black rounded-xl font-medium hover:opacity-90"
+              >
+                Close
+              </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Sidebar */}
+      <aside className="hidden md:flex w-64 flex-col border-r border-white/10 bg-black/50 backdrop-blur-xl">
+        <div className="p-4 border-b border-white/10">
+          <Link href="/dashboard" className="flex items-center gap-2 text-white/60 hover:text-white transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            <span className="font-bold">OUWIBO<span className="text-primary">_</span></span>
+          </Link>
+        </div>
+
+        <div className="p-4 space-y-3 border-b border-white/10">
+          <div className="flex items-center gap-2 text-sm">
+            <div className={`w-2 h-2 rounded-full ${health?.ok ? "bg-primary" : "bg-red-500"}`} />
+            <span className="text-white/60">{health?.ok ? "Server Online" : "Server Offline"}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <div className={`w-2 h-2 rounded-full ${serverHasAiKey ? "bg-primary" : "bg-yellow-500"}`} />
+            <span className="text-white/60">{serverHasAiKey ? "AI Active" : "AI Offline"}</span>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-2">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            Model: {modelLabel}
+          </button>
+          <button
+            onClick={() => setMessages([])}
+            className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-sm transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear Chat
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">Crypto Prompts</div>
+          <div className="space-y-1.5">
+            {CRYPTO_PROMPTS.map((prompt) => (
+              <button
+                key={prompt}
+                onClick={() => sendMessage(prompt)}
+                disabled={!canSend}
+                className="w-full px-3 py-2 rounded-lg bg-white/5 hover:bg-primary/10 border border-white/10 hover:border-primary/30 text-left text-xs text-white/60 hover:text-white transition-all disabled:opacity-30"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="relative z-10 flex flex-1 flex-col min-w-0">
+        {/* Header */}
+        <header className="flex h-14 items-center gap-3 border-b border-white/10 bg-black/50 px-4 backdrop-blur-xl">
+          <Link href="/dashboard" className="md:hidden text-white/60 hover:text-white">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${loading ? "bg-yellow-400" : "bg-primary"} animate-pulse`} />
+            <span className="text-sm font-medium">
+              {loading ? "Analyzing..." : "OUWIBO Crypto Agent"}
+            </span>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={() => setShowSettings(true)} className="md:hidden text-white/60 hover:text-white">
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 md:px-6">
+          <div className="mx-auto max-w-3xl space-y-4">
+            {messages.length === 0 && !streamingText && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center justify-center min-h-[50vh] text-center"
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4">
+                  <Bitcoin className="w-8 h-8 text-primary" />
+                </div>
+                <h1 className="text-2xl font-bold mb-2">OUWIBO Crypto Agent</h1>
+                <p className="text-white/50 max-w-md mb-6">
+                  AI-powered cryptocurrency analysis. Ask about market trends, price analysis, trading signals, and more.
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center mb-6">
+                  <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-medium">
+                    {modelLabel}
+                  </span>
+                  {serverHasAiKey ? (
+                    <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-medium">
+                      AI Active
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-xs font-medium">
+                      AI Offline
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md">
+                  {CRYPTO_PROMPTS.slice(0, 4).map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => sendMessage(prompt)}
+                      disabled={!canSend}
+                      className="px-3 py-2.5 rounded-lg bg-white/5 hover:bg-primary/10 border border-white/10 hover:border-primary/30 text-left text-xs text-white/60 hover:text-white transition-all disabled:opacity-30"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            <AnimatePresence initial={false}>
+              {messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)}
+            </AnimatePresence>
+
+            {streamingText && <StreamingMessage text={streamingText} />}
+            {loading && !streamingText && (
+              <div className="flex items-center gap-2 text-white/60">
+                <LoadingDots />
+                <span className="text-sm">Processing...</span>
+              </div>
+            )}
+
+            <div ref={bottomRef} />
+          </div>
+        </div>
+
+        {/* Input */}
+        <div className="border-t border-white/10 bg-black/50 p-4 backdrop-blur-xl">
+          <div className="mx-auto max-w-3xl flex gap-2">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKey}
+              disabled={!canSend || loading}
+              placeholder={serverHasAiKey ? "Ask about crypto markets..." : "AI offline..."}
+              rows={1}
+              className="flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-primary/50 disabled:opacity-40"
+              style={{ maxHeight: 120, overflowY: "auto" }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = "auto";
+                target.style.height = Math.min(target.scrollHeight, 120) + "px";
+              }}
+            />
+            <button
+              onClick={() => sendMessage()}
+              disabled={!input.trim() || !canSend || loading}
+              className="w-12 h-12 shrink-0 rounded-xl bg-primary text-black flex items-center justify-center hover:opacity-90 disabled:opacity-30 transition-opacity"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            </button>
+          </div>
+          <p className="mt-2 text-center text-[10px] text-white/30">
+            Enter to send · Shift+Enter for new line · Model: {modelLabel}
+          </p>
+        </div>
+      </main>
     </div>
   );
 }
