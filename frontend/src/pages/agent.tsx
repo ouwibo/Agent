@@ -15,35 +15,18 @@ import {
   Copy,
   Check,
   Code,
+  Sparkles,
+  Search,
+  FileText,
+  Calculator,
+  Globe2,
+  Database,
+  Cpu,
+  BookOpen,
+  Zap,
+  ChevronDown,
 } from "lucide-react";
 import { MatrixBackground } from "@/components/matrix-background";
-import { marked } from "marked";
-import hljs from "highlight.js/lib/core";
-import javascript from "highlight.js/lib/languages/javascript";
-import typescript from "highlight.js/lib/languages/typescript";
-import python from "highlight.js/lib/languages/python";
-import rust from "highlight.js/lib/languages/rust";
-import go from "highlight.js/lib/languages/go";
-import bash from "highlight.js/lib/languages/bash";
-import json from "highlight.js/lib/languages/json";
-import html from "highlight.js/lib/languages/xml";
-import css from "highlight.js/lib/languages/css";
-import sql from "highlight.js/lib/languages/sql";
-
-// Register languages
-hljs.registerLanguage("javascript", javascript);
-hljs.registerLanguage("typescript", typescript);
-hljs.registerLanguage("python", python);
-hljs.registerLanguage("rust", rust);
-hljs.registerLanguage("go", go);
-hljs.registerLanguage("bash", bash);
-hljs.registerLanguage("json", json);
-hljs.registerLanguage("html", html);
-hljs.registerLanguage("css", css);
-hljs.registerLanguage("sql", sql);
-
-// Import highlight.js styles
-import "highlight.js/styles/github-dark.css";
 
 const UI = {
   page: "bg-[#050608]",
@@ -92,14 +75,25 @@ const MODEL_STORAGE_KEY = "ouwibo_model";
 const CONVERSATION_STORAGE_KEY = "ouwibo_conversation";
 
 const FALLBACK_MODELS: AIModel[] = [
-  { model_name: "gpt-oss:20b", label: "GPT-OSS 20B", vendor: "Open Source", type: "free", context_window: 128000, is_byok: false, description: "General purpose, fast and capable" },
-  { model_name: "gemma4:31b", label: "Gemma 4 31B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Latest Gemma, excellent reasoning" },
-  { model_name: "gemma3:27b", label: "Gemma 3 27B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Balanced performance" },
+  { model_name: "gemma3:4b", label: "Gemma 3 4B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Ultra lightweight, fast responses" },
   { model_name: "gemma3:12b", label: "Gemma 3 12B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Lightweight, fast responses" },
-  { model_name: "gemma3:4b", label: "Gemma 3 4B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Ultra lightweight" },
+  { model_name: "gemma3:27b", label: "Gemma 3 27B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Balanced performance" },
+  { model_name: "gemma4:31b", label: "Gemma 4 31B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Latest Gemma, excellent reasoning" },
+  { model_name: "gpt-oss:20b", label: "GPT-OSS 20B", vendor: "Open Source", type: "free", context_window: 128000, is_byok: false, description: "General purpose, fast and capable" },
   { model_name: "qwen3-coder-next", label: "Qwen3 Coder", vendor: "Alibaba", type: "free", context_window: 128000, is_byok: false, description: "Specialized for code tasks" },
   { model_name: "nemotron-3-nano:30b", label: "Nemotron 3 Nano", vendor: "NVIDIA", type: "free", context_window: 128000, is_byok: false, description: "Efficient and accurate" },
   { model_name: "devstral-small-2:24b", label: "Devstral 2", vendor: "Mistral", type: "free", context_window: 128000, is_byok: false, description: "Code-focused model" },
+];
+
+const SKILLS = [
+  { icon: Search, name: "Web Search", desc: "Search the internet for real-time information", color: "text-cyan-400" },
+  { icon: Code, name: "Code Writing", desc: "Write, debug and explain code in any language", color: "text-yellow-400" },
+  { icon: Globe2, name: "Browse URLs", desc: "Visit websites and extract information", color: "text-green-400" },
+  { icon: FileText, name: "Content Writing", desc: "Create articles, reports, and documentation", color: "text-purple-400" },
+  { icon: Calculator, name: "Data Analysis", desc: "Analyze and visualize data", color: "text-orange-400" },
+  { icon: Database, name: "File Operations", desc: "Read, write, and manage files", color: "text-pink-400" },
+  { icon: Cpu, name: "Task Planning", desc: "Break complex goals into actionable steps", color: "text-blue-400" },
+  { icon: BookOpen, name: "Research", desc: "Deep research on any topic", color: "text-emerald-400" },
 ];
 
 const QUICK_PROMPTS = [
@@ -129,74 +123,21 @@ function Badge({ children, tone = "default" }: { children: React.ReactNode; tone
   return <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-mono tracking-wide ${cls}`}>{children}</span>;
 }
 
-// Loading dots animation
 function LoadingDots() {
   return (
     <div className="flex items-center gap-1">
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
-          className="h-1.5 w-1.5 rounded-full bg-primary"
+          animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
+          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+          className="h-2 w-2 rounded-full bg-primary"
         />
       ))}
     </div>
   );
 }
 
-function ThinkingIndicator() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 backdrop-blur-sm"
-    >
-      <LoadingDots />
-      <span className="text-sm text-white/60">Thinking...</span>
-    </motion.div>
-  );
-}
-
-function WritingIndicator({ text }: { text: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-[85%]"
-    >
-      <div className="rounded-2xl rounded-bl-md border border-white/15 bg-gradient-to-b from-white/[0.08] to-white/[0.04] px-4 py-3 shadow-lg">
-        <div className="prose prose-invert prose-sm max-w-none">
-          <div dangerouslySetInnerHTML={{ __html: parseMarkdown(text) }} />
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <LoadingDots />
-          <span className="text-[10px] text-primary/60">Writing...</span>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// Configure marked
-marked.setOptions({
-  highlight: function(code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return hljs.highlight(code, { language: lang }).value;
-      } catch {}
-    }
-    return hljs.highlightAuto(code).value;
-  },
-  breaks: true,
-  gfm: true,
-});
-
-function parseMarkdown(text: string): string {
-  return marked.parse(text) as string;
-}
-
-// Code block component with copy button
 function CodeBlock({ code, language }: { code: string; language: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -206,80 +147,90 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const highlighted = language && hljs.getLanguage(language)
-    ? hljs.highlight(code, { language }).value
-    : hljs.highlightAuto(code).value;
-
   return (
-    <div className="relative group my-3">
-      <div className="flex items-center justify-between bg-zinc-900/80 rounded-t-lg border border-white/10 px-3 py-1.5">
-        <span className="text-[10px] font-mono text-white/50 uppercase">{language || 'code'}</span>
+    <div className="relative my-3 rounded-xl border border-white/10 bg-zinc-900/80 overflow-hidden">
+      <div className="flex items-center justify-between bg-zinc-800/80 px-3 py-1.5 border-b border-white/5">
+        <span className="text-[11px] font-mono text-white/50">{language || "code"}</span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1 text-[10px] text-white/50 hover:text-white transition-colors"
+          className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white transition-colors"
         >
-          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          {copied ? 'Copied!' : 'Copy'}
+          {copied ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+          {copied ? "Copied!" : "Copy"}
         </button>
       </div>
-      <pre className="bg-zinc-950 border border-t-0 border-white/10 rounded-b-lg p-4 overflow-x-auto">
-        <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+      <pre className="overflow-x-auto p-3 text-[13px] font-mono text-white/90 leading-relaxed">
+        <code>{code}</code>
       </pre>
     </div>
   );
 }
 
-function isFileMentionToken(token: string) {
-  return /^`file\s+['"][^'"]+['"]`$/.test(token.trim());
-}
+function renderContent(content: string) {
+  const parts: React.ReactNode[] = [];
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let key = 0;
 
-function extractFileMentionPath(token: string) {
-  const match = token.trim().match(/^`file\s+['"]([^'"]+)['"]`$/);
-  return match?.[1] || "";
-}
+  for (const match of content.matchAll(codeBlockRegex)) {
+    const index = match.index ?? 0;
+    if (index > lastIndex) {
+      parts.push(
+        <span key={`t-${key++}`} className="whitespace-pre-wrap text-[14px] leading-relaxed">
+          {content.slice(lastIndex, index)}
+        </span>
+      );
+    }
 
-function isUrlToken(token: string) {
-  return /^https?:\/\//i.test(token.trim());
-}
+    const language = match[1] || "";
+    const code = match[2].trim();
+    parts.push(<CodeBlock key={`c-${key++}`} code={code} language={language} />);
 
-function renderMessageContent(content: string) {
-  // Parse markdown
-  const html = parseMarkdown(content);
-  return <div className="prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: html }} />;
+    lastIndex = index + match[0].length;
+  }
+
+  if (lastIndex < content.length) {
+    parts.push(
+      <span key={`t-${key++}`} className="whitespace-pre-wrap text-[14px] leading-relaxed">
+        {content.slice(lastIndex)}
+      </span>
+    );
+  }
+
+  return parts.length > 0 ? <>{parts}</> : <span className="whitespace-pre-wrap text-[14px] leading-relaxed">{content}</span>;
 }
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
-        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/15 bg-black/50 shadow-lg">
-          <img src="/logo.png" alt="OUWIBO" className="h-full w-full object-cover" style={{ objectPosition: "center 15%" }} />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 border border-primary/30">
+          <Bot className="h-4 w-4 text-primary" />
         </div>
       )}
       <div className={`max-w-[85%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
         <div
           className={`rounded-2xl px-4 py-3 backdrop-blur-sm ${
             isUser
-              ? "rounded-br-md bg-primary text-black font-medium shadow-[0_0_20px_rgba(0,255,65,0.2)]"
-              : "rounded-bl-md border border-white/15 bg-white/[0.06] text-white/95"
+              ? "rounded-tr-sm bg-primary text-black font-medium"
+              : "rounded-tl-sm border border-white/10 bg-white/[0.03] text-white/90"
           }`}
         >
-          {isUser ? <span className="whitespace-pre-wrap">{message.content}</span> : renderMessageContent(message.content)}
+          {isUser ? <span className="text-[14px]">{message.content}</span> : renderContent(message.content)}
         </div>
-        <span className="px-2 text-[10px] font-mono text-white/30">
+        <span className="px-1 text-[10px] text-white/30">
           {new Date(message.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>
       {isUser && (
-        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/10">
-          <span className="text-xs font-semibold text-white/70">U</span>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 border border-white/15">
+          <span className="text-[11px] font-semibold text-white/70">U</span>
         </div>
       )}
     </motion.div>
@@ -290,9 +241,9 @@ export default function AgentPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [thinking, setThinking] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [showSkills, setShowSkills] = useState(false);
   const [health, setHealth] = useState<HealthData | null>(null);
   const [models, setModels] = useState<AIModel[]>(FALLBACK_MODELS);
   const [conversationId, setConversationId] = useState<string | null>(() => localStorage.getItem(CONVERSATION_STORAGE_KEY));
@@ -347,16 +298,13 @@ export default function AgentPage() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
-    setThinking(true);
     setStreamingText("");
-
     try {
       const response = await fetch(`${BACKEND}/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ input: prompt, conversation_id: conversationId, model_name: model, mode }),
       });
-
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
         throw new Error(err.error || "Server error");
@@ -375,7 +323,6 @@ export default function AgentPage() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
@@ -392,10 +339,8 @@ export default function AgentPage() {
             continue;
           }
 
-          if (evt?.type === "thinking") setThinking(true);
           if (evt?.type === "text" && evt.content) {
             finalText += evt.content;
-            setThinking(false);
             setStreamingText(finalText);
           }
           if (evt?.type === "error") throw new Error(evt.message || "AI error");
@@ -406,13 +351,12 @@ export default function AgentPage() {
       if (streamConversationId) setConversationId(streamConversationId);
       else if (nextConversationId) setConversationId(nextConversationId);
 
-      setMessages((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: finalText.trim() || "(no output)", createdAt: new Date().toISOString() }]);
+      setMessages((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: finalText.trim() || "(no response)", createdAt: new Date().toISOString() }]);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
       setMessages((prev) => [...prev, { id: `e-${Date.now()}`, role: "assistant", content: `⚠️ ${message}`, createdAt: new Date().toISOString() }]);
     } finally {
       setLoading(false);
-      setThinking(false);
       setStreamingText("");
       setStreamConversationId(null);
     }
@@ -425,139 +369,85 @@ export default function AgentPage() {
     }
   };
 
-  const modelLabel = selectedModel?.label || model.replace(/^(ollama|zo):/i, "");
+  const modelLabel = selectedModel?.label || model;
 
   return (
-    <div className={`relative flex h-screen overflow-hidden ${UI.page} text-white selection:bg-primary/30 selection:text-black`}>
+    <div className={`flex h-screen overflow-hidden ${UI.page} text-white`}>
       <MatrixBackground />
 
-      <AnimatePresence>
-        {showSettings && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5"
-            onClick={(event) => event.target === event.currentTarget && setShowSettings(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="w-full max-w-xl rounded-2xl border border-white/15 bg-zinc-950 p-5 shadow-2xl"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">Select Model</h2>
-                  <p className="mt-1 text-xs text-white/40">Choose an AI model for your session</p>
-                </div>
-                <button onClick={() => setShowSettings(false)} className="text-white/40 transition-colors hover:text-white">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="grid max-h-[50vh] gap-2 overflow-y-auto pr-1 md:grid-cols-2">
-                {models.map((item) => {
-                  const active = item.model_name === model;
-                  return (
-                    <button
-                      key={item.model_name}
-                      onClick={() => {
-                        setModel(item.model_name);
-                        setShowSettings(false);
-                      }}
-                      className={`rounded-xl border p-3 text-left transition-all ${
-                        active ? "border-primary/50 bg-primary/10" : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]"
-                      }`}
-                    >
-                      <div className="mb-1.5 flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-white">{item.label}</div>
-                          <div className="truncate text-[10px] font-mono text-white/30">{item.vendor}</div>
-                        </div>
-                        {active ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : <Globe className="h-4 w-4 shrink-0 text-white/20" />}
-                      </div>
-                      <p className="mb-2 text-[11px] leading-relaxed text-white/50">{item.description || item.vendor}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {item.type === "free" && <Badge tone="green">FREE</Badge>}
-                        <Badge>{formatTokens(item.context_window)}</Badge>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => setModel(health?.defaultModel || "gpt-oss:20b")}
-                  className="rounded-lg border border-white/10 px-4 py-2 text-xs text-white/60 transition-colors hover:bg-white/5"
-                >
-                  Reset default
-                </button>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="ml-auto rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-black transition-all hover:opacity-90"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Sidebar */}
-      <aside className="hidden w-60 flex-col border-r border-white/8 bg-black/90 backdrop-blur-xl md:flex">
+      <aside className="hidden w-72 flex-col border-r border-white/8 bg-black/90 backdrop-blur-xl md:flex">
         <div className="border-b border-white/8 p-4">
-          <Link href="/" className="flex items-center gap-2 text-white/50 transition-colors hover:text-white">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm font-bold tracking-wider text-white">OUWIBO<span className="text-primary">_</span></span>
+          <Link href="/dashboard" className="flex items-center gap-2 text-white/50 hover:text-white transition-colors">
+            <LayoutDashboard className="h-4 w-4" />
+            <span className="text-base font-bold">OUWIBO<span className="text-primary">_</span></span>
           </Link>
         </div>
 
-        <div className="space-y-2 border-b border-white/8 p-4">
+        {/* Status */}
+        <div className="border-b border-white/8 p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${health?.ok ? "bg-primary" : "bg-red-500"} animate-pulse`} />
-            <span className="text-[11px] font-mono text-white/40">{health?.ok ? "ONLINE" : "OFFLINE"}</span>
+            <div className={`h-2 w-2 rounded-full ${health?.ok ? "bg-green-500" : "bg-red-500"}`} />
+            <span className="text-xs text-white/50">{health?.ok ? "Online" : "Offline"}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${serverHasAiKey ? "bg-primary" : "bg-yellow-500"} animate-pulse`} />
-            <span className="text-[11px] font-mono text-white/40">{serverHasAiKey ? "AI READY" : "NO API KEY"}</span>
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs text-white/70 font-medium">{modelLabel}</span>
           </div>
         </div>
 
-        <div className="space-y-2 p-4">
+        {/* Skills */}
+        <div className="border-b border-white/8 p-4">
+          <button
+            onClick={() => setShowSkills(!showSkills)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <span className="text-xs font-mono text-white/40 tracking-wider">SKILLS</span>
+            <ChevronDown className={`h-3 w-3 text-white/40 transition-transform ${showSkills ? "rotate-180" : ""}`} />
+          </button>
+          {showSkills && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {SKILLS.map((skill, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 p-2 rounded-lg border border-white/5 bg-white/[0.02] hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer"
+                >
+                  <skill.icon className={`h-4 w-4 ${skill.color}`} />
+                  <span className="text-[11px] text-white/60 truncate">{skill.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="p-4 space-y-2">
           <button
             onClick={() => setShowSettings(true)}
-            className="flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white/60 transition-all hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+            className="flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-all"
           >
             <Settings className="h-4 w-4" />
-            Model · {modelLabel}
+            Change Model
           </button>
           <button
-            onClick={() => {
-              setMessages([]);
-              setConversationId("");
-              setStreamingText("");
-              localStorage.removeItem(CONVERSATION_STORAGE_KEY);
-            }}
-            disabled={loading && !messages.length}
-            className="flex w-full items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-sm text-red-400/60 transition-all hover:bg-red-500/10 hover:text-red-300 disabled:opacity-30"
+            onClick={() => { setMessages([]); setConversationId(""); localStorage.removeItem(CONVERSATION_STORAGE_KEY); }}
+            className="flex w-full items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-sm text-red-400/70 hover:bg-red-500/10 transition-all"
           >
             <Trash2 className="h-4 w-4" />
             Clear Chat
           </button>
         </div>
 
+        {/* Quick Prompts */}
         <div className="flex-1 overflow-y-auto p-4">
-          <p className="mb-2 px-1 text-[10px] tracking-[0.2em] text-white/30 font-mono">QUICK PROMPTS</p>
-          <div className="space-y-1.5">
-            {QUICK_PROMPTS.map((item) => (
+          <p className="text-xs font-mono text-white/40 tracking-wider mb-3">QUICK PROMPTS</p>
+          <div className="space-y-2">
+            {QUICK_PROMPTS.map((item, i) => (
               <button
-                key={item}
+                key={i}
                 onClick={() => sendMessage(item)}
-                disabled={!canSend}
-                className="w-full rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2 text-left text-[11px] leading-relaxed text-white/50 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-white/90 disabled:opacity-30"
+                disabled={!canSend || loading}
+                className="w-full rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2.5 text-left text-[12px] leading-relaxed text-white/50 hover:border-primary/20 hover:bg-primary/5 hover:text-white/80 disabled:opacity-30 transition-all"
               >
                 {item}
               </button>
@@ -566,61 +456,53 @@ export default function AgentPage() {
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/8 bg-black/80 px-4 backdrop-blur-xl">
-          <Link href="/" className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-white md:hidden">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${loading ? "bg-yellow-400" : "bg-primary"} animate-pulse`} />
-            <span className="font-mono text-[12px] tracking-wide text-white/70">
-              {loading ? "PROCESSING..." : "OUWIBO AGENT"}
-            </span>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            {!serverHasAiKey && (
-              <span className="hidden rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-mono text-yellow-400 md:inline-flex">
-                Configure API Key
+      {/* Main Chat Area */}
+      <main className="relative flex flex-1 flex-col">
+        {/* Header */}
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/8 bg-black/80 px-4 backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="flex items-center gap-1.5 text-white/40 hover:text-white md:hidden">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${loading ? "bg-yellow-400 animate-pulse" : "bg-primary"}`} />
+              <span className="text-sm font-medium text-white/80">
+                {loading ? "Generating..." : "OUWIBO Agent"}
               </span>
-            )}
-            <button onClick={() => setShowSettings(true)} className="text-white/40 transition-colors hover:text-white md:hidden">
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge tone="blue">{modelLabel}</Badge>
+            <button onClick={() => setShowSettings(true)} className="md:hidden text-white/40 hover:text-white">
               <Settings className="h-5 w-5" />
             </button>
           </div>
         </header>
 
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-6">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
             {messages.length === 0 && !streamingText && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex min-h-[50vh] flex-col items-center justify-center gap-5 text-center">
-                <div className="relative">
-                  <div className="absolute inset-0 scale-150 rounded-full bg-primary/15 blur-2xl animate-pulse" />
-                  <img
-                    src="/logo.png"
-                    alt="OUWIBO"
-                    className="relative h-16 w-16 rounded-full border-2 border-primary/40 object-cover shadow-[0_0_20px_rgba(0,255,65,0.3)]"
-                    style={{ objectPosition: "center 15%" }}
-                  />
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center gap-6 py-12">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
+                  <Bot className="h-8 w-8 text-primary" />
                 </div>
-                <div>
-                  <h1 className="mb-2 text-2xl font-bold text-white">OUWIBO Agent</h1>
-                  <p className="mx-auto max-w-md text-sm leading-relaxed text-white/40">
-                    AI-powered assistant for coding, research, and task automation. Select a model and start chatting.
-                  </p>
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold text-white mb-2">OUWIBO Agent</h1>
+                  <p className="text-white/40 max-w-md">An autonomous AI assistant with web search, code writing, and task planning capabilities.</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <Badge tone="blue">{modelLabel}</Badge>
                   {selectedModel?.type === "free" && <Badge tone="green">FREE</Badge>}
-                  {serverHasAiKey ? <Badge tone="green">AI READY</Badge> : <Badge tone="amber">NO API KEY</Badge>}
+                  {serverHasAiKey ? <Badge tone="green">READY</Badge> : <Badge tone="amber">SETUP REQUIRED</Badge>}
                 </div>
-                <div className="grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
-                  {QUICK_PROMPTS.slice(0, 4).map((item) => (
+                <div className="grid w-full max-w-xl grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  {QUICK_PROMPTS.slice(0, 4).map((item, i) => (
                     <button
-                      key={item}
+                      key={i}
                       onClick={() => sendMessage(item)}
-                      disabled={!canSend}
-                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-left text-[11px] leading-relaxed text-white/50 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-white/90 disabled:opacity-30"
+                      disabled={!canSend || loading}
+                      className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-[13px] leading-relaxed text-white/50 hover:border-primary/30 hover:bg-primary/5 hover:text-white/80 disabled:opacity-30 transition-all"
                     >
                       {item}
                     </button>
@@ -630,50 +512,119 @@ export default function AgentPage() {
             )}
 
             <AnimatePresence initial={false}>
-              {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))}
+              {messages.map((message) => <MessageBubble key={message.id} message={message} />)}
             </AnimatePresence>
 
-            {streamingText && <WritingIndicator text={streamingText} />}
-            {thinking && !streamingText && <ThinkingIndicator />}
+            {streamingText && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20">
+                  <Bot className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 rounded-2xl rounded-tl-sm border border-white/10 bg-white/[0.03] px-4 py-3">
+                  {renderContent(streamingText)}
+                  <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-1" />
+                </div>
+              </motion.div>
+            )}
+
+            {loading && !streamingText && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 text-white/50">
+                <LoadingDots />
+                <span className="text-sm">Generating response...</span>
+              </motion.div>
+            )}
 
             <div ref={bottomRef} />
           </div>
         </div>
 
+        {/* Input */}
         <div className="shrink-0 border-t border-white/8 bg-black/80 p-4 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-3xl items-end gap-2">
-            <div className="relative flex-1">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKey}
-                disabled={!canSend || loading}
-                placeholder={serverHasAiKey ? `Message ${modelLabel}...` : "Configure API key first..."}
-                rows={1}
-                className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-primary/50 disabled:opacity-40"
-                style={{ maxHeight: 120, overflowY: "hidden" }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = "auto";
-                  target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
-                }}
-              />
-            </div>
+          <div className="mx-auto flex max-w-3xl items-end gap-3">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKey}
+              disabled={!canSend || loading}
+              placeholder={serverHasAiKey ? `Message ${modelLabel}...` : "Setup required..."}
+              rows={1}
+              className="flex-1 resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/40 disabled:opacity-40"
+              style={{ maxHeight: 120 }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = "auto";
+                target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+              }}
+            />
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || !canSend || loading}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-black shadow-[0_0_16px_rgba(0,255,65,0.3)] transition-all hover:scale-105 hover:shadow-[0_0_24px_rgba(0,255,65,0.5)] active:scale-95 disabled:opacity-30"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-black transition-all hover:opacity-90 active:scale-95 disabled:opacity-30"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </button>
           </div>
-          <p className="mt-2 text-center font-mono text-[10px] text-white/25">
-            ENTER to send · SHIFT+ENTER for new line · Model: {modelLabel}
-          </p>
         </div>
       </main>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+            onClick={(e) => e.target === e.currentTarget && setShowSettings(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg rounded-2xl border border-white/10 bg-zinc-900 p-5"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Select Model</h2>
+                <button onClick={() => setShowSettings(false)} className="text-white/40 hover:text-white">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-2">
+                {models.map((item) => {
+                  const active = item.model_name === model;
+                  return (
+                    <button
+                      key={item.model_name}
+                      onClick={() => { setModel(item.model_name); setShowSettings(false); }}
+                      className={`w-full rounded-xl border p-3 text-left transition-all ${
+                        active
+                          ? "border-primary/40 bg-primary/10"
+                          : "border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-[14px]">{item.label}</span>
+                        {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                      </div>
+                      <p className="text-[12px] text-white/40">{item.description || item.vendor}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-black hover:opacity-90"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
