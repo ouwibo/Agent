@@ -12,8 +12,38 @@ import {
   Settings,
   Trash2,
   X,
+  Copy,
+  Check,
+  Code,
 } from "lucide-react";
 import { MatrixBackground } from "@/components/matrix-background";
+import { marked } from "marked";
+import hljs from "highlight.js/lib/core";
+import javascript from "highlight.js/lib/languages/javascript";
+import typescript from "highlight.js/lib/languages/typescript";
+import python from "highlight.js/lib/languages/python";
+import rust from "highlight.js/lib/languages/rust";
+import go from "highlight.js/lib/languages/go";
+import bash from "highlight.js/lib/languages/bash";
+import json from "highlight.js/lib/languages/json";
+import html from "highlight.js/lib/languages/xml";
+import css from "highlight.js/lib/languages/css";
+import sql from "highlight.js/lib/languages/sql";
+
+// Register languages
+hljs.registerLanguage("javascript", javascript);
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("rust", rust);
+hljs.registerLanguage("go", go);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("json", json);
+hljs.registerLanguage("html", html);
+hljs.registerLanguage("css", css);
+hljs.registerLanguage("sql", sql);
+
+// Import highlight.js styles
+import "highlight.js/styles/github-dark.css";
 
 const UI = {
   page: "bg-[#050608]",
@@ -41,7 +71,7 @@ interface HealthData {
   defaultModel?: string;
 }
 
-interface ZoModel {
+interface AIModel {
   model_name: string;
   label: string;
   vendor: string;
@@ -53,26 +83,32 @@ interface ZoModel {
 
 interface ModelsResponse {
   ok: boolean;
-  models: ZoModel[];
+  models: AIModel[];
   recommendedModel?: string;
 }
 
 const BACKEND = "/api";
-const MODEL_STORAGE_KEY = "ouwibo_zo_model";
-const CONVERSATION_STORAGE_KEY = "ouwibo_zo_conversation";
+const MODEL_STORAGE_KEY = "ouwibo_model";
+const CONVERSATION_STORAGE_KEY = "ouwibo_conversation";
 
-const FALLBACK_MODELS: ZoModel[] = [
-  { model_name: "zo:openai/gpt-5.4-mini", label: "GPT-5.4 mini", vendor: "OpenAI", type: "free", context_window: 400000, is_byok: false },
-  { model_name: "zo:zai/glm-5", label: "GLM 5", vendor: "Z.AI", type: "free", context_window: 202752, is_byok: false },
+const FALLBACK_MODELS: AIModel[] = [
+  { model_name: "gpt-oss:20b", label: "GPT-OSS 20B", vendor: "Open Source", type: "free", context_window: 128000, is_byok: false, description: "General purpose, fast and capable" },
+  { model_name: "gemma4:31b", label: "Gemma 4 31B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Latest Gemma, excellent reasoning" },
+  { model_name: "gemma3:27b", label: "Gemma 3 27B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Balanced performance" },
+  { model_name: "gemma3:12b", label: "Gemma 3 12B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Lightweight, fast responses" },
+  { model_name: "gemma3:4b", label: "Gemma 3 4B", vendor: "Google", type: "free", context_window: 128000, is_byok: false, description: "Ultra lightweight" },
+  { model_name: "qwen3-coder-next", label: "Qwen3 Coder", vendor: "Alibaba", type: "free", context_window: 128000, is_byok: false, description: "Specialized for code tasks" },
+  { model_name: "nemotron-3-nano:30b", label: "Nemotron 3 Nano", vendor: "NVIDIA", type: "free", context_window: 128000, is_byok: false, description: "Efficient and accurate" },
+  { model_name: "devstral-small-2:24b", label: "Devstral 2", vendor: "Mistral", type: "free", context_window: 128000, is_byok: false, description: "Code-focused model" },
 ];
 
 const QUICK_PROMPTS = [
-  "Bantu saya bikin ringkasan singkat dari topik yang sedang tren",
-  "Jelaskan sesuatu dengan gaya yang sederhana dan langsung",
-  "Buat ide fitur untuk website AI publik",
-  "Tulis prompt yang lebih tajam untuk AI agent",
-  "Analisis halaman web dan beri poin pentingnya",
-  "Buat rencana langkah demi langkah untuk task kompleks",
+  "Research the latest AI trends and write a summary report",
+  "Build me a Python web scraper for product prices",
+  "Create a 30-day learning plan for machine learning",
+  "Find the top 5 competitors of Tesla and analyze them",
+  "Write a REST API in Node.js with authentication",
+  "Explain how transformer models work with code examples",
 ];
 
 function formatTokens(value?: number | null) {
@@ -93,26 +129,31 @@ function Badge({ children, tone = "default" }: { children: React.ReactNode; tone
   return <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-mono tracking-wide ${cls}`}>{children}</span>;
 }
 
+// Loading dots animation
+function LoadingDots() {
+  return (
+    <div className="flex items-center gap-1">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+          className="h-1.5 w-1.5 rounded-full bg-primary"
+        />
+      ))}
+    </div>
+  );
+}
+
 function ThinkingIndicator() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8, scale: 0.985 }}
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      className={`flex items-center gap-2.5 rounded-2xl border ${UI.borderStrong} bg-white/[0.055] px-3 py-2 text-[11px] text-white/72 backdrop-blur-sm`}
+      className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 backdrop-blur-sm"
     >
-      <div className="flex items-center gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            animate={{ y: [0, -4, 0], opacity: [0.32, 1, 0.32], scale: [0.92, 1, 0.92] }}
-            transition={{ duration: 0.95, repeat: Infinity, delay: i * 0.14, ease: "easeInOut" }}
-            className="h-2 w-2 rounded-full bg-primary"
-          />
-        ))}
-      </div>
-      <span className="font-mono tracking-[0.22em] text-white/72">THINKING</span>
-      <span className="text-white/25">·</span>
-      <span className="text-white/45">menyusun jawaban</span>
+      <LoadingDots />
+      <span className="text-sm text-white/60">Thinking...</span>
     </motion.div>
   );
 }
@@ -120,22 +161,71 @@ function ThinkingIndicator() {
 function WritingIndicator({ text }: { text: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8, scale: 0.99 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      className="max-w-[84%] md:max-w-[70%]"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-[85%]"
     >
-      <div className={`rounded-2xl rounded-bl-sm border ${UI.borderStrong} bg-gradient-to-b from-white/[0.085] to-white/[0.045] px-3.5 py-2.75 text-[13px] leading-relaxed text-white/95 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]`}>
-        <pre className="whitespace-pre-wrap font-sans leading-[1.65] tracking-[0.01em]">
-          {text}
-          <motion.span
-            animate={{ opacity: [0.15, 1, 0.15], y: [0, -1, 0] }}
-            transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
-            className="ml-1 inline-block h-4 w-2 rounded-sm bg-primary align-bottom"
-          />
-        </pre>
+      <div className="rounded-2xl rounded-bl-md border border-white/15 bg-gradient-to-b from-white/[0.08] to-white/[0.04] px-4 py-3 shadow-lg">
+        <div className="prose prose-invert prose-sm max-w-none">
+          <div dangerouslySetInnerHTML={{ __html: parseMarkdown(text) }} />
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <LoadingDots />
+          <span className="text-[10px] text-primary/60">Writing...</span>
+        </div>
       </div>
-      <div className="mt-1 px-1 text-[10px] font-mono tracking-[0.22em] text-cyan-300/55">LIVE WRITING</div>
     </motion.div>
+  );
+}
+
+// Configure marked
+marked.setOptions({
+  highlight: function(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(code, { language: lang }).value;
+      } catch {}
+    }
+    return hljs.highlightAuto(code).value;
+  },
+  breaks: true,
+  gfm: true,
+});
+
+function parseMarkdown(text: string): string {
+  return marked.parse(text) as string;
+}
+
+// Code block component with copy button
+function CodeBlock({ code, language }: { code: string; language: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const highlighted = language && hljs.getLanguage(language)
+    ? hljs.highlight(code, { language }).value
+    : hljs.highlightAuto(code).value;
+
+  return (
+    <div className="relative group my-3">
+      <div className="flex items-center justify-between bg-zinc-900/80 rounded-t-lg border border-white/10 px-3 py-1.5">
+        <span className="text-[10px] font-mono text-white/50 uppercase">{language || 'code'}</span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 text-[10px] text-white/50 hover:text-white transition-colors"
+        >
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      <pre className="bg-zinc-950 border border-t-0 border-white/10 rounded-b-lg p-4 overflow-x-auto">
+        <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+      </pre>
+    </div>
   );
 }
 
@@ -153,103 +243,43 @@ function isUrlToken(token: string) {
 }
 
 function renderMessageContent(content: string) {
-  const parts: React.ReactNode[] = [];
-  const regex = /(`file\s+['"][^'"]+['"]`|https?:\/\/\S+)/g;
-  let lastIndex = 0;
-  let key = 0;
-
-  for (const match of content.matchAll(regex)) {
-    const index = match.index ?? 0;
-    if (index > lastIndex) {
-      parts.push(
-        <span key={`t-${key++}`} className="whitespace-pre-wrap">
-          {content.slice(lastIndex, index)}
-        </span>,
-      );
-    }
-
-    const token = match[0];
-    if (isFileMentionToken(token)) {
-      const path = extractFileMentionPath(token);
-      parts.push(
-        <span
-          key={`f-${key++}`}
-          className="mx-0.5 inline-flex max-w-full items-center rounded-lg border border-primary/25 bg-primary/10 px-2 py-1 align-middle font-mono text-[11px] text-primary shadow-[0_0_0_1px_rgba(0,255,65,0.06)]"
-          title={path}
-        >
-          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
-          <span className="truncate">file {path}</span>
-        </span>,
-      );
-    } else if (isUrlToken(token)) {
-      parts.push(
-        <a
-          key={`u-${key++}`}
-          href={token}
-          target="_blank"
-          rel="noreferrer"
-          className="mx-0.5 inline-flex max-w-full items-center rounded-lg border border-cyan-400/25 bg-cyan-500/10 px-2 py-1 align-middle font-mono text-[11px] text-cyan-300 no-underline transition-colors hover:bg-cyan-500/16"
-          title={token}
-        >
-          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-cyan-300" />
-          <span className="truncate">{token.replace(/^https?:\/\//i, "")}</span>
-        </a>,
-      );
-    } else {
-      parts.push(
-        <span key={`o-${key++}`} className="whitespace-pre-wrap">
-          {token}
-        </span>,
-      );
-    }
-
-    lastIndex = index + token.length;
-  }
-
-  if (lastIndex < content.length) {
-    parts.push(
-      <span key={`t-${key++}`} className="whitespace-pre-wrap">
-        {content.slice(lastIndex)}
-      </span>,
-    );
-  }
-
-  if (!parts.length) {
-    return <span className="whitespace-pre-wrap">{content}</span>;
-  }
-
-  return <>{parts}</>;
+  // Parse markdown
+  const html = parseMarkdown(content);
+  return <div className="prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.99 }}
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", stiffness: 320, damping: 28 }}
-      className={`flex gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
-        <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border ${UI.borderStrong} bg-black/70 ${UI.accentRing}`}>
+        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/15 bg-black/50 shadow-lg">
           <img src="/logo.png" alt="OUWIBO" className="h-full w-full object-cover" style={{ objectPosition: "center 15%" }} />
         </div>
       )}
-      <div className={`max-w-[84%] md:max-w-[70%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
+      <div className={`max-w-[85%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
         <div
-          className={`rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed backdrop-blur-sm ${
+          className={`rounded-2xl px-4 py-3 backdrop-blur-sm ${
             isUser
-              ? "rounded-br-sm bg-primary text-black font-semibold shadow-[0_0_24px_rgba(0,255,65,0.16)]"
-              : `rounded-bl-sm border ${UI.borderStrong} bg-white/[0.055] text-white/92`
+              ? "rounded-br-md bg-primary text-black font-medium shadow-[0_0_20px_rgba(0,255,65,0.2)]"
+              : "rounded-bl-md border border-white/15 bg-white/[0.06] text-white/95"
           }`}
         >
-          {renderMessageContent(message.content)}
+          {isUser ? <span className="whitespace-pre-wrap">{message.content}</span> : renderMessageContent(message.content)}
         </div>
-        <span className="px-1 font-mono text-[10px] text-white/18">{new Date(message.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+        <span className="px-2 text-[10px] font-mono text-white/30">
+          {new Date(message.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+        </span>
       </div>
       {isUser && (
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/12">
-          <span className="text-[10px] font-semibold text-white/65">U</span>
+        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/10">
+          <span className="text-xs font-semibold text-white/70">U</span>
         </div>
       )}
     </motion.div>
@@ -263,7 +293,11 @@ export default function AgentPage() {
   const [thinking, setThinking] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const [model, setModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || "zo:openai/gpt-5.4-mini");
+  const [health, setHealth] = useState<HealthData | null>(null);
+  const [models, setModels] = useState<AIModel[]>(FALLBACK_MODELS);
+  const [conversationId, setConversationId] = useState<string | null>(() => localStorage.getItem(CONVERSATION_STORAGE_KEY));
+  const [streamConversationId, setStreamConversationId] = useState<string | null>(null);
+  const [model, setModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || "gpt-oss:20b");
   const [mode, setMode] = useState<ChatMode>(() => (localStorage.getItem("ouwibo_chat_mode") as ChatMode) || "long");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -315,12 +349,14 @@ export default function AgentPage() {
     setLoading(true);
     setThinking(true);
     setStreamingText("");
+
     try {
       const response = await fetch(`${BACKEND}/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ input: prompt, conversation_id: conversationId, model_name: model, mode }),
       });
+
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
         throw new Error(err.error || "Server error");
@@ -339,6 +375,7 @@ export default function AgentPage() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
@@ -361,7 +398,7 @@ export default function AgentPage() {
             setThinking(false);
             setStreamingText(finalText);
           }
-          if (evt?.type === "error") throw new Error(evt.message || "AI returned an error");
+          if (evt?.type === "error") throw new Error(evt.message || "AI error");
           if (evt?.type === "done") break;
         }
       }
@@ -369,7 +406,7 @@ export default function AgentPage() {
       if (streamConversationId) setConversationId(streamConversationId);
       else if (nextConversationId) setConversationId(nextConversationId);
 
-      setMessages((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: finalText.trim() || "(tidak ada output)", createdAt: new Date().toISOString() }]);
+      setMessages((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: finalText.trim() || "(no output)", createdAt: new Date().toISOString() }]);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
       setMessages((prev) => [...prev, { id: `e-${Date.now()}`, role: "assistant", content: `⚠️ ${message}`, createdAt: new Date().toISOString() }]);
@@ -388,10 +425,10 @@ export default function AgentPage() {
     }
   };
 
-  const modelLabel = selectedModel?.label || model.replace(/^zo:/i, "");
+  const modelLabel = selectedModel?.label || model.replace(/^(ollama|zo):/i, "");
 
   return (
-    <div className={`relative flex h-screen overflow-hidden ${UI.page} text-white selection:bg-primary/28 selection:text-black`}>
+    <div className={`relative flex h-screen overflow-hidden ${UI.page} text-white selection:bg-primary/30 selection:text-black`}>
       <MatrixBackground />
 
       <AnimatePresence>
@@ -400,24 +437,26 @@ export default function AgentPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/86 p-5"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5"
             onClick={(event) => event.target === event.currentTarget && setShowSettings(false)}
           >
             <motion.div
-              initial={{ opacity: 0, y: 14, scale: 0.985 }}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 14, scale: 0.985 }}
-              className={`w-full max-w-xl rounded-2xl border ${UI.borderStrong} ${UI.panel} p-4 shadow-2xl`}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="w-full max-w-xl rounded-2xl border border-white/15 bg-zinc-950 p-5 shadow-2xl"
             >
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-semibold text-white">Model</h2>
-                  <p className="mt-1 text-xs text-white/34">Pilih model yang tersedia untuk akun kamu.</p>
+                  <h2 className="text-lg font-semibold text-white">Select Model</h2>
+                  <p className="mt-1 text-xs text-white/40">Choose an AI model for your session</p>
                 </div>
-                <button onClick={() => setShowSettings(false)} className="text-white/40 transition-colors hover:text-white"><X className="h-5 w-5" /></button>
+                <button onClick={() => setShowSettings(false)} className="text-white/40 transition-colors hover:text-white">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
-              <div className="grid max-h-[52vh] gap-2 overflow-y-auto pr-1 md:grid-cols-2">
+              <div className="grid max-h-[50vh] gap-2 overflow-y-auto pr-1 md:grid-cols-2">
                 {models.map((item) => {
                   const active = item.model_name === model;
                   return (
@@ -427,22 +466,20 @@ export default function AgentPage() {
                         setModel(item.model_name);
                         setShowSettings(false);
                       }}
-                      className={`rounded-xl border p-2.5 text-left transition-all duration-200 ${
-                        active ? "border-primary/55 bg-primary/12 shadow-[0_0_0_1px_rgba(0,255,65,0.08)]" : "border-white/8 bg-white/[0.03] hover:border-white/16 hover:bg-white/[0.06]"
+                      className={`rounded-xl border p-3 text-left transition-all ${
+                        active ? "border-primary/50 bg-primary/10" : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]"
                       }`}
                     >
                       <div className="mb-1.5 flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium text-white">{item.label}</div>
-                          <div className="truncate text-[10px] font-mono text-white/28">{item.vendor}</div>
+                          <div className="truncate text-[10px] font-mono text-white/30">{item.vendor}</div>
                         </div>
                         {active ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : <Globe className="h-4 w-4 shrink-0 text-white/20" />}
                       </div>
-                      <p className="mb-2 text-[11px] leading-relaxed text-white/40">{item.description || item.vendor}</p>
+                      <p className="mb-2 text-[11px] leading-relaxed text-white/50">{item.description || item.vendor}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {item.type === "free" && <Badge tone="green">FREE</Badge>}
-                        {item.type === "subscribers" && <Badge tone="amber">PREMIUM</Badge>}
-                        {item.is_byok && <Badge tone="blue">BYOK</Badge>}
                         <Badge>{formatTokens(item.context_window)}</Badge>
                       </div>
                     </button>
@@ -452,14 +489,14 @@ export default function AgentPage() {
 
               <div className="mt-4 flex gap-2">
                 <button
-                  onClick={() => setModel(health?.defaultModel || "zo:openai/gpt-5.4-mini")}
-                  className="rounded-xl border border-white/10 px-3.5 py-2 text-xs text-white/70 transition-colors hover:bg-white/5"
+                  onClick={() => setModel(health?.defaultModel || "gpt-oss:20b")}
+                  className="rounded-lg border border-white/10 px-4 py-2 text-xs text-white/60 transition-colors hover:bg-white/5"
                 >
                   Reset default
                 </button>
                 <button
                   onClick={() => setShowSettings(false)}
-                  className="ml-auto rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-black transition-all hover:opacity-95"
+                  className="ml-auto rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-black transition-all hover:opacity-90"
                 >
                   Close
                 </button>
@@ -469,46 +506,58 @@ export default function AgentPage() {
         )}
       </AnimatePresence>
 
-      <aside className="hidden w-64 flex-col border-r border-white/8 bg-black/92 backdrop-blur-2xl md:flex">
-        <div className="border-b border-white/8 p-3.5">
-          <Link href="/dashboard" className="flex items-center gap-2 text-white/50 transition-colors hover:text-white">
+      {/* Sidebar */}
+      <aside className="hidden w-60 flex-col border-r border-white/8 bg-black/90 backdrop-blur-xl md:flex">
+        <div className="border-b border-white/8 p-4">
+          <Link href="/" className="flex items-center gap-2 text-white/50 transition-colors hover:text-white">
             <ArrowLeft className="h-4 w-4" />
             <span className="text-sm font-bold tracking-wider text-white">OUWIBO<span className="text-primary">_</span></span>
           </Link>
         </div>
 
-        <div className="space-y-2 border-b border-white/6 p-3.5">
-          <div className="flex items-center gap-2"><div className={`h-2 w-2 rounded-full ${health?.ok ? "bg-primary" : "bg-red-500"} animate-pulse`} /><span className="text-xs font-mono text-white/35">{health?.ok ? "SERVER ONLINE" : "SERVER OFFLINE"}</span></div>
-          <div className="flex items-center gap-2"><div className={`h-2 w-2 rounded-full ${serverHasAiKey ? "bg-primary" : "bg-yellow-500"} animate-pulse`} /><span className="text-xs font-mono text-white/35">{serverHasAiKey ? "API KEY ACTIVE" : "SET ZO_API_KEY"}</span></div>
+        <div className="space-y-2 border-b border-white/8 p-4">
+          <div className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${health?.ok ? "bg-primary" : "bg-red-500"} animate-pulse`} />
+            <span className="text-[11px] font-mono text-white/40">{health?.ok ? "ONLINE" : "OFFLINE"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${serverHasAiKey ? "bg-primary" : "bg-yellow-500"} animate-pulse`} />
+            <span className="text-[11px] font-mono text-white/40">{serverHasAiKey ? "AI READY" : "NO API KEY"}</span>
+          </div>
         </div>
 
-        <div className="p-3 space-y-2">
+        <div className="space-y-2 p-4">
           <button
             onClick={() => setShowSettings(true)}
-            className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/4 px-3 py-2.25 text-sm font-medium text-white/60 transition-all hover:border-white/18 hover:bg-white/8 hover:text-white"
+            className="flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white/60 transition-all hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
           >
             <Settings className="h-4 w-4" />
             Model · {modelLabel}
           </button>
           <button
-            onClick={() => { setMessages([]); setConversationId(""); setStreamingText(""); localStorage.removeItem(CONVERSATION_STORAGE_KEY); }}
+            onClick={() => {
+              setMessages([]);
+              setConversationId("");
+              setStreamingText("");
+              localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+            }}
             disabled={loading && !messages.length}
-            className="flex w-full items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2.25 text-sm font-medium text-red-400/60 transition-all hover:bg-red-500/10 hover:text-red-300 disabled:opacity-25"
+            className="flex w-full items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-sm text-red-400/60 transition-all hover:bg-red-500/10 hover:text-red-300 disabled:opacity-30"
           >
             <Trash2 className="h-4 w-4" />
             Clear Chat
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3">
-          <p className="mb-2 px-2 py-1 text-[10px] tracking-[0.28em] text-white/20 font-mono">QUICK PROMPTS</p>
+        <div className="flex-1 overflow-y-auto p-4">
+          <p className="mb-2 px-1 text-[10px] tracking-[0.2em] text-white/30 font-mono">QUICK PROMPTS</p>
           <div className="space-y-1.5">
             {QUICK_PROMPTS.map((item) => (
               <button
                 key={item}
                 onClick={() => sendMessage(item)}
                 disabled={!canSend}
-                className="w-full rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2 text-left text-[11px] leading-relaxed text-white/42 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-white/80 disabled:opacity-20"
+                className="w-full rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2 text-left text-[11px] leading-relaxed text-white/50 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-white/90 disabled:opacity-30"
               >
                 {item}
               </button>
@@ -517,48 +566,61 @@ export default function AgentPage() {
         </div>
       </aside>
 
+      {/* Main */}
       <main className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/8 bg-black/74 px-3.5 backdrop-blur-xl md:px-5">
-          <Link href="/dashboard" className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-white md:hidden"><ArrowLeft className="h-4 w-4" /></Link>
+        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/8 bg-black/80 px-4 backdrop-blur-xl">
+          <Link href="/" className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-white md:hidden">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
           <div className="flex items-center gap-2">
             <div className={`h-2 w-2 rounded-full ${loading ? "bg-yellow-400" : "bg-primary"} animate-pulse`} />
-            <span className="font-mono text-[13px] tracking-wide text-white/72">{loading ? "OUWIBO WORKING..." : "OUWIBO AGENT // READY"}</span>
+            <span className="font-mono text-[12px] tracking-wide text-white/70">
+              {loading ? "PROCESSING..." : "OUWIBO AGENT"}
+            </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            {!serverHasAiKey && <span className="hidden rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-1 text-[11px] font-mono text-yellow-400 md:inline-flex">Add API key in Vercel env</span>}
-            <button onClick={() => setShowSettings(true)} className="text-white/40 transition-colors hover:text-white md:hidden"><Settings className="h-5 w-5" /></button>
+            {!serverHasAiKey && (
+              <span className="hidden rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-mono text-yellow-400 md:inline-flex">
+                Configure API Key
+              </span>
+            )}
+            <button onClick={() => setShowSettings(true)} className="text-white/40 transition-colors hover:text-white md:hidden">
+              <Settings className="h-5 w-5" />
+            </button>
           </div>
         </header>
 
-        <div className="flex items-center gap-2 border-b border-white/8 bg-black/50 px-3.5 py-2 backdrop-blur-md md:px-5">
-          <div className="ml-auto hidden text-[10px] font-mono text-white/30 md:block">Mode controls answer length and structure</div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-3.5 py-5 md:px-6">
+        <div className="flex-1 overflow-y-auto px-4 py-6">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
             {messages.length === 0 && !streamingText && (
-              <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="flex min-h-[52vh] flex-col items-center justify-center gap-4 text-center">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex min-h-[50vh] flex-col items-center justify-center gap-5 text-center">
                 <div className="relative">
-                  <div className="absolute inset-0 scale-125 rounded-full bg-primary/20 blur-xl animate-pulse" />
-                  <img src="/logo.png" alt="OUWIBO" className="relative h-14 w-14 rounded-full border-2 border-primary/45 object-cover shadow-[0_0_18px_rgba(0,255,65,0.32)]" style={{ objectPosition: "center 15%" }} />
+                  <div className="absolute inset-0 scale-150 rounded-full bg-primary/15 blur-2xl animate-pulse" />
+                  <img
+                    src="/logo.png"
+                    alt="OUWIBO"
+                    className="relative h-16 w-16 rounded-full border-2 border-primary/40 object-cover shadow-[0_0_20px_rgba(0,255,65,0.3)]"
+                    style={{ objectPosition: "center 15%" }}
+                  />
                 </div>
                 <div>
-                  <h1 className="mb-1 text-xl font-bold text-white">OUWIBO Agent</h1>
-                  <p className="mx-auto max-w-lg text-sm leading-relaxed text-white/38">Public AI agent di atas Zo Computer. Pilih model, mode jawaban, lalu kirim prompt langsung.</p>
+                  <h1 className="mb-2 text-2xl font-bold text-white">OUWIBO Agent</h1>
+                  <p className="mx-auto max-w-md text-sm leading-relaxed text-white/40">
+                    AI-powered assistant for coding, research, and task automation. Select a model and start chatting.
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <Badge tone="blue">{modelLabel}</Badge>
-                  <Badge tone="blue">{mode.toUpperCase()}</Badge>
                   {selectedModel?.type === "free" && <Badge tone="green">FREE</Badge>}
-                  {serverHasAiKey ? <Badge tone="green">API KEY ACTIVE</Badge> : <Badge tone="amber">SET ZO_API_KEY</Badge>}
+                  {serverHasAiKey ? <Badge tone="green">AI READY</Badge> : <Badge tone="amber">NO API KEY</Badge>}
                 </div>
-                <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
                   {QUICK_PROMPTS.slice(0, 4).map((item) => (
                     <button
                       key={item}
                       onClick={() => sendMessage(item)}
                       disabled={!canSend}
-                      className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5 text-left text-[11px] leading-relaxed text-white/42 transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-white/80 disabled:opacity-20"
+                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-left text-[11px] leading-relaxed text-white/50 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-white/90 disabled:opacity-30"
                     >
                       {item}
                     </button>
@@ -568,51 +630,48 @@ export default function AgentPage() {
             )}
 
             <AnimatePresence initial={false}>
-              {messages.map((message) => <MessageBubble key={message.id} message={message} />)}
+              {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
             </AnimatePresence>
 
             {streamingText && <WritingIndicator text={streamingText} />}
             {thinking && !streamingText && <ThinkingIndicator />}
 
-            {!messages.length && loading && (
-              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white/70">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                Memproses jawaban...
-              </div>
-            )}
-
             <div ref={bottomRef} />
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-white/8 bg-black/74 p-3 backdrop-blur-xl md:p-3.5">
+        <div className="shrink-0 border-t border-white/8 bg-black/80 p-4 backdrop-blur-xl">
           <div className="mx-auto flex max-w-3xl items-end gap-2">
             <div className="relative flex-1">
               <textarea
                 value={input}
-                onChange={(event) => setInput(event.target.value)}
+                onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKey}
                 disabled={!canSend || loading}
-                placeholder={serverHasAiKey ? `Tulis prompt untuk ${modelLabel}...` : "Tambahkan API key di Vercel dulu..."}
+                placeholder={serverHasAiKey ? `Message ${modelLabel}...` : "Configure API key first..."}
                 rows={1}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-3.5 py-2.5 text-[13px] text-white placeholder-white/24 focus:outline-none focus:border-primary/55 disabled:opacity-40 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                style={{ maxHeight: 96, overflowY: "hidden" }}
-                onInput={(event) => {
-                  const target = event.target as HTMLTextAreaElement;
+                className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-primary/50 disabled:opacity-40"
+                style={{ maxHeight: 120, overflowY: "hidden" }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
                   target.style.height = "auto";
-                  target.style.height = `${Math.min(target.scrollHeight, 96)}px`;
+                  target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
                 }}
               />
             </div>
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || !canSend || loading}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-black shadow-[0_0_16px_rgba(0,255,65,0.34)] transition-all hover:scale-105 hover:shadow-[0_0_24px_rgba(0,255,65,0.5)] active:scale-95 disabled:opacity-25"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-black shadow-[0_0_16px_rgba(0,255,65,0.3)] transition-all hover:scale-105 hover:shadow-[0_0_24px_rgba(0,255,65,0.5)] active:scale-95 disabled:opacity-30"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </button>
           </div>
-          <p className="mt-2 text-center font-mono text-[10px] tracking-wider text-white/12">ENTER · SHIFT+ENTER baru baris · model: {modelLabel} · mode: {mode.toUpperCase()}</p>
+          <p className="mt-2 text-center font-mono text-[10px] text-white/25">
+            ENTER to send · SHIFT+ENTER for new line · Model: {modelLabel}
+          </p>
         </div>
       </main>
     </div>
