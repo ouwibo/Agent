@@ -73,8 +73,10 @@ export default async function handler(req: Request) {
             for (const line of lines) {
               try {
                 const parsed = JSON.parse(line);
-                if (parsed.message?.content) {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text', content: parsed.message.content })}\n\n`));
+                // Handle both 'content' and 'thinking' fields
+                const content = parsed.message?.content || parsed.message?.thinking || '';
+                if (content) {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text', content })}\n\n`));
                 }
                 if (parsed.done) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
