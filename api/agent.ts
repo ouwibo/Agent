@@ -12,7 +12,7 @@ const SYSTEM_PROMPT = `You are OUWIBO, a professional AI crypto analyst. You pro
 - Market sentiment and on-chain metrics
 
 IMPORTANT RULES:
-1. NEVER make up specific prices or dates - if you don't have current data, say so clearly
+1. NEVER make up specific prices or dates - if you do not have current data, say so clearly
 2. Always remind users to DYOR (Do Your Own Research) before making investment decisions
 3. Provide balanced analysis with both bullish and bearish scenarios
 4. Use clear formatting with bullet points and sections
@@ -44,17 +44,17 @@ export default async function handler(req: Request) {
       { role: "user", content: input.trim() }
     ];
 
-    const response = await fetch(`${AI_API_URL}/chat`, {
+    const response = await fetch(AI_API_URL + "/chat", {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AI_API_KEY}`,
+        'Authorization': "Bearer " + AI_API_KEY,
       },
       body: JSON.stringify({ model: model_name, messages, stream: true }),
     });
 
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: \`AI error: \${response.status}\` }), { status: response.status });
+      return new Response(JSON.stringify({ error: "AI error: " + response.status }), { status: response.status });
     }
 
     const encoder = new TextEncoder();
@@ -70,21 +70,21 @@ export default async function handler(req: Request) {
             if (done) break;
             
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\\n').filter(l => l.trim());
+            const lines = chunk.split('\n').filter((l: string) => l.trim());
             
             for (const line of lines) {
               try {
                 const parsed = JSON.parse(line);
                 if (parsed.message?.content) {
-                  controller.enqueue(encoder.encode(\`data: \${JSON.stringify({ type: 'text', content: parsed.message.content })}\\n\\n\`));
+                  controller.enqueue(encoder.encode("data: " + JSON.stringify({ type: 'text', content: parsed.message.content }) + "\n\n"));
                 }
                 if (parsed.done) {
-                  controller.enqueue(encoder.encode(\`data: \${JSON.stringify({ type: 'done' })}\\n\\n\`));
+                  controller.enqueue(encoder.encode("data: " + JSON.stringify({ type: 'done' }) + "\n\n"));
                 }
               } catch {}
             }
           }
-          controller.enqueue(encoder.encode(\`data: \${JSON.stringify({ type: 'done' })}\\n\\n\`));
+          controller.enqueue(encoder.encode("data: " + JSON.stringify({ type: 'done' }) + "\n\n"));
           controller.close();
         } catch (err) {
           controller.error(err);
