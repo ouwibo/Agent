@@ -1,205 +1,215 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import {
-  TrendingUp,
-  TrendingDown,
-  Bitcoin,
-  BarChart3,
-  Wallet,
-  Newspaper,
-  Zap,
-  Bot,
-  ArrowRight,
-  RefreshCw,
-} from "lucide-react";
-import { MatrixBackground } from "@/components/matrix-background";
+import { useEffect, useState } from "react";
+import { TrendingUp, TrendingDown, RefreshCw, Bot, Newspaper, BarChart3, Target, Zap } from "lucide-react";
 
-// Mock data - will be replaced with real API
-const MARKET_DATA = [
-  { symbol: "BTC", name: "Bitcoin", price: 94500, change: 2.4, trend: "up" },
-  { symbol: "ETH", name: "Ethereum", price: 3280, change: 1.8, trend: "up" },
-  { symbol: "SOL", name: "Solana", price: 178, change: -0.5, trend: "down" },
-  { symbol: "BNB", name: "BNB", price: 612, change: 0.3, trend: "up" },
-];
+interface Coin {
+  id: string;
+  symbol: string;
+  name: string;
+  price: number;
+  change_24h: number;
+  change_7d: number;
+  market_cap: number;
+}
 
-const CRYPTO_TOOLS = [
-  { icon: BarChart3, title: "Market Analysis", desc: "Real-time price analysis and trends", color: "text-green-400" },
-  { icon: Wallet, title: "Portfolio Tracker", desc: "Track your crypto holdings", color: "text-blue-400" },
-  { icon: Newspaper, title: "Crypto News", desc: "Latest news and updates", color: "text-purple-400" },
-  { icon: Zap, title: "Trading Signals", desc: "AI-powered trading insights", color: "text-yellow-400" },
-];
+interface MarketData {
+  ok: boolean;
+  timestamp: string;
+  coins: Coin[];
+}
 
 const QUICK_PROMPTS = [
-  "Analyze BTC price trend",
-  "What's happening with ETH?",
-  "Top gainers today",
-  "Market sentiment analysis",
+  { label: "Analyze BTC price trend", prompt: "Analyze the current Bitcoin price trend and give your outlook" },
+  { label: "What's happening with ETH?", prompt: "What's the current Ethereum price and market sentiment?" },
+  { label: "Top gainers today", prompt: "Which cryptocurrencies are gaining the most today?" },
+  { label: "Market sentiment analysis", prompt: "Analyze the overall crypto market sentiment today" },
 ];
 
 export default function Dashboard() {
+  const [market, setMarket] = useState<MarketData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMarket();
+  }, []);
+
+  const fetchMarket = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/market");
+      const data = await res.json();
+      setMarket(data);
+    } catch (e) {
+      console.error("Failed to fetch market data", e);
+    }
+    setLoading(false);
+  };
+
+  const formatPrice = (price: number) => {
+    if (price >= 1000) return "$" + price.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    if (price >= 1) return "$" + price.toFixed(2);
+    return "$" + price.toFixed(4);
+  };
+
+  const formatCap = (cap: number) => {
+    if (cap >= 1e12) return "$" + (cap / 1e12).toFixed(1) + "T";
+    if (cap >= 1e9) return "$" + (cap / 1e9).toFixed(1) + "B";
+    return "$" + (cap / 1e6).toFixed(1) + "M";
+  };
+
   return (
-    <div className="relative min-h-screen bg-[#050608] text-white overflow-x-hidden">
-      <MatrixBackground />
-      
-      {/* Header */}
-      <header className="relative z-10 border-b border-white/10 bg-black/50 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <Bitcoin className="w-5 h-5 text-primary" />
-            </div>
-            <span className="text-xl font-bold">OUWIBO<span className="text-primary">_</span></span>
+    <div className="min-h-screen bg-[#050608] text-white">
+      {/* Sidebar */}
+      <aside className="fixed left-0 top-0 h-full w-64 border-r border-white/10 bg-black/50 backdrop-blur-xl p-4 flex flex-col">
+        <Link href="/" className="flex items-center gap-2 mb-6">
+          <span className="text-xl font-bold tracking-wider">OUWIBO<span className="text-primary">_</span></span>
+        </Link>
+
+        <nav className="space-y-2 flex-1">
+          <Link href="/agent" className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary border border-primary/20">
+            <Bot className="w-4 h-4" />
+            <span>AI Agent</span>
           </Link>
-          
-          <div className="flex items-center gap-4">
-            <Link
-              href="/agent"
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-lg font-medium text-sm hover:opacity-90 transition-opacity"
-            >
-              <Bot className="w-4 h-4" />
-              Open Agent
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+
+          <div className="pt-4">
+            <p className="text-[10px] font-mono text-white/30 tracking-widest mb-2">TOOLS</p>
+            {[
+              { icon: BarChart3, label: "Market Analysis" },
+              { icon: Target, label: "Portfolio" },
+              { icon: Newspaper, label: "News" },
+              { icon: Zap, label: "Signals" },
+            ].map((item, i) => (
+              <button key={i} className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-white/50 hover:bg-white/5 hover:text-white transition-colors">
+                <item.icon className="w-4 h-4" />
+                <span className="text-sm">{item.label}</span>
+              </button>
+            ))}
           </div>
+        </nav>
+
+        <div className="pt-4 border-t border-white/10">
+          <p className="text-[10px] font-mono text-white/30 tracking-widest mb-2">ASK AI AGENT</p>
+          {QUICK_PROMPTS.map((item, i) => (
+            <Link
+              key={i}
+              href={`/agent?q=${encodeURIComponent(item.prompt)}`}
+              className="block px-3 py-1.5 text-xs text-white/50 hover:text-primary transition-colors"
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
-      </header>
+      </aside>
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 py-8">
-        {/* Hero Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-4xl font-bold mb-2">Crypto Intelligence Dashboard</h1>
-          <p className="text-white/50">AI-powered crypto analysis and insights</p>
-        </motion.div>
+      <main className="ml-64 p-8">
+        <header className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold">Crypto Intelligence Dashboard</h1>
+            <p className="text-sm text-white/40 mt-1">
+              {market ? `Updated: ${new Date(market.timestamp).toLocaleString()}` : "Loading..."}
+            </p>
+          </div>
+          <button
+            onClick={fetchMarket}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="text-sm">Refresh</span>
+          </button>
+        </header>
 
         {/* Market Overview */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Market Overview
-            </h2>
-            <button className="flex items-center gap-1 text-sm text-white/50 hover:text-white transition-colors">
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </button>
-          </div>
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Market Overview</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {MARKET_DATA.map((coin, i) => (
-              <motion.div
-                key={coin.symbol}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                className="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">{coin.symbol}</span>
-                    <span className="text-xs text-white/40">{coin.name}</span>
+          {loading && !market ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="h-32 rounded-xl bg-white/5 animate-pulse" />
+              ))}
+            </div>
+          ) : market?.coins ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {market.coins.slice(0, 8).map(coin => (
+                <motion.div
+                  key={coin.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-primary/20 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{coin.symbol}</span>
+                      <span className="text-xs text-white/40">{coin.name}</span>
+                    </div>
+                    {coin.change_24h >= 0 ? (
+                      <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4 text-red-400" />
+                    )}
                   </div>
-                  {coin.trend === "up" ? (
-                    <TrendingUp className="w-4 h-4 text-green-400" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4 text-red-400" />
-                  )}
-                </div>
-                <div className="text-2xl font-bold mb-1">
-                  ${coin.price.toLocaleString()}
-                </div>
-                <div className={`text-sm ${coin.change >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {coin.change >= 0 ? "+" : ""}{coin.change}%
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Tools Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-8"
-        >
-          <h2 className="text-xl font-semibold mb-4">Crypto Tools</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {CRYPTO_TOOLS.map((tool, i) => (
-              <motion.div
-                key={tool.title}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 + i * 0.05 }}
-                className="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all cursor-pointer group"
-              >
-                <tool.icon className={`w-8 h-8 ${tool.color} mb-3`} />
-                <h3 className="font-semibold mb-1">{tool.title}</h3>
-                <p className="text-sm text-white/50">{tool.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                  
+                  <div className="text-2xl font-bold mb-1">{formatPrice(coin.price)}</div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs ${coin.change_24h >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {coin.change_24h >= 0 ? '+' : ''}{coin.change_24h?.toFixed(2)}% 24h
+                    </span>
+                    <span className="text-xs text-white/30">|</span>
+                    <span className={`text-xs ${coin.change_7d >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {coin.change_7d >= 0 ? '+' : ''}{coin.change_7d?.toFixed(2)}% 7d
+                    </span>
+                  </div>
+                  
+                  <div className="text-xs text-white/30 mt-2">
+                    MC: {formatCap(coin.market_cap)}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : null}
+        </section>
 
         {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mb-8"
-        >
-          <h2 className="text-xl font-semibold mb-4">Ask AI Agent</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {QUICK_PROMPTS.map((prompt, i) => (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Start AI Analysis</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {QUICK_PROMPTS.map((item, i) => (
               <Link
-                key={prompt}
-                href={`/agent?q=${encodeURIComponent(prompt)}`}
-                className="p-3 rounded-lg border border-white/10 bg-white/5 hover:bg-primary/10 hover:border-primary/30 transition-all text-sm text-white/70 hover:text-white"
+                key={i}
+                href={`/agent?q=${encodeURIComponent(item.prompt)}`}
+                className="p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-primary/20 hover:bg-primary/5 transition-colors group"
               >
-                {prompt}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <Bot className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-medium">{item.label}</div>
+                    <div className="text-xs text-white/40">Ask AI Agent</div>
+                  </div>
+                </div>
               </Link>
             ))}
           </div>
-        </motion.div>
+        </section>
 
         {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="text-center py-8"
-        >
-          <p className="text-white/50 mb-4">Ready to analyze crypto markets with AI?</p>
+        <section className="text-center py-12 border-t border-white/10">
+          <h2 className="text-xl font-semibold mb-2">Ready to analyze?</h2>
+          <p className="text-white/40 mb-6">Get real-time crypto insights powered by AI</p>
           <Link
             href="/agent"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-black rounded-xl font-semibold hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-black rounded-xl font-medium hover:opacity-90 transition-opacity"
           >
             <Bot className="w-5 h-5" />
             Start AI Analysis
-            <ArrowRight className="w-5 h-5" />
           </Link>
-        </motion.div>
+        </section>
       </main>
-
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-white/10 py-4 mt-8">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between text-sm text-white/40">
-          <span>OUWIBO Crypto Agent © 2026</span>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span>All systems operational</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
