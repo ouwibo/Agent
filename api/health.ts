@@ -9,7 +9,7 @@ export default async function handler(req: Request) {
     ok: true,
     time: new Date().toISOString(),
     serverKeys: { ai: hasKey },
-    defaultModel: "gpt-oss:20b",
+    defaultModel: "gemma3:4b",
   }), {
     headers: { 'Content-Type': 'application/json' }
   });

@@ -297,7 +297,7 @@ export default function AgentPage() {
   const [models, setModels] = useState<AIModel[]>(FALLBACK_MODELS);
   const [conversationId, setConversationId] = useState<string | null>(() => localStorage.getItem(CONVERSATION_STORAGE_KEY));
   const [streamConversationId, setStreamConversationId] = useState<string | null>(null);
-  const [model, setModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || "gpt-oss:20b");
+  const [model, setModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || "gemma3:4b");
   const [mode, setMode] = useState<ChatMode>(() => (localStorage.getItem("ouwibo_chat_mode") as ChatMode) || "long");
   const bottomRef = useRef<HTMLDivElement>(null);
 

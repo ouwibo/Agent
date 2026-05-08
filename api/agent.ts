@@ -21,7 +21,7 @@ export default async function handler(req: Request) {
 
   try {
     const body = await req.json();
-    const { input, model_name = "gpt-oss:20b", history = [] } = body;
+    const { input, model_name = "gemma3:4b", history = [] } = body;
 
     if (!input || !input.trim()) {
       return new Response(JSON.stringify({ error: 'Input is required' }), { status: 400 });
@@ -73,8 +73,8 @@ export default async function handler(req: Request) {
             for (const line of lines) {
               try {
                 const parsed = JSON.parse(line);
-                // Handle both 'content' and 'thinking' fields
-                const content = parsed.message?.content || parsed.message?.thinking || '';
+                // Only use 'content', ignore 'thinking' (internal reasoning)
+                const content = parsed.message?.content || '';
                 if (content) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text', content })}\n\n`));
                 }

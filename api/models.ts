@@ -41,7 +41,7 @@ export default async function handler(req: Request) {
   return new Response(JSON.stringify({
     ok: true,
     models,
-    recommendedModel: models[0]?.model_name || "gpt-oss:20b",
+    recommendedModel: models[0]?.model_name || "gemma3:4b",
   }), {
     headers: { 'Content-Type': 'application/json' }
   });
