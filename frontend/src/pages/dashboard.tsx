@@ -1,23 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, RefreshCw, Bot, Newspaper, BarChart3, Target, Zap } from "lucide-react";
-
-interface Coin {
-  id: string;
-  symbol: string;
-  name: string;
-  price: number;
-  change_24h: number;
-  change_7d: number;
-  market_cap: number;
-}
-
-interface MarketData {
-  ok: boolean;
-  timestamp: string;
-  coins: Coin[];
-}
+import { Bot, Newspaper, BarChart3, Target, Zap } from "lucide-react";
 
 const QUICK_PROMPTS = [
   { label: "Analyze BTC price trend", prompt: "Analyze the current Bitcoin price trend and give your outlook" },
@@ -27,37 +11,6 @@ const QUICK_PROMPTS = [
 ];
 
 export default function Dashboard() {
-  const [market, setMarket] = useState<MarketData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchMarket();
-  }, []);
-
-  const fetchMarket = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("https://agent-ouwibo.zocomputer.io/api/market");
-      const data = await res.json();
-      setMarket(data);
-    } catch (e) {
-      console.error("Failed to fetch market data", e);
-    }
-    setLoading(false);
-  };
-
-  const formatPrice = (price: number) => {
-    if (price >= 1000) return "$" + price.toLocaleString(undefined, { maximumFractionDigits: 0 });
-    if (price >= 1) return "$" + price.toFixed(2);
-    return "$" + price.toFixed(4);
-  };
-
-  const formatCap = (cap: number) => {
-    if (cap >= 1e12) return "$" + (cap / 1e12).toFixed(1) + "T";
-    if (cap >= 1e9) return "$" + (cap / 1e9).toFixed(1) + "B";
-    return "$" + (cap / 1e6).toFixed(1) + "M";
-  };
-
   return (
     <div className="min-h-screen bg-[#050608] text-white">
       {/* Sidebar */}
@@ -104,74 +57,10 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="ml-64 p-8">
-        <header className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold">Crypto Intelligence Dashboard</h1>
-            <p className="text-sm text-white/40 mt-1">
-              {market ? `Updated: ${new Date(market.timestamp).toLocaleString()}` : "Loading..."}
-            </p>
-          </div>
-          <button
-            onClick={fetchMarket}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="text-sm">Refresh</span>
-          </button>
+        <header className="mb-8">
+          <h1 className="text-2xl font-bold">Crypto Intelligence Dashboard</h1>
+          <p className="text-sm text-white/40 mt-1">AI-powered cryptocurrency analysis</p>
         </header>
-
-        {/* Market Overview */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Market Overview</h2>
-          
-          {loading && !market ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[1,2,3,4].map(i => (
-                <div key={i} className="h-32 rounded-xl bg-white/5 animate-pulse" />
-              ))}
-            </div>
-          ) : market?.coins ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {market.coins.slice(0, 8).map(coin => (
-                <motion.div
-                  key={coin.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-primary/20 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{coin.symbol}</span>
-                      <span className="text-xs text-white/40">{coin.name}</span>
-                    </div>
-                    {coin.change_24h >= 0 ? (
-                      <TrendingUp className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4 text-red-400" />
-                    )}
-                  </div>
-                  
-                  <div className="text-2xl font-bold mb-1">{formatPrice(coin.price)}</div>
-                  
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs ${coin.change_24h >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {coin.change_24h >= 0 ? '+' : ''}{coin.change_24h?.toFixed(2)}% 24h
-                    </span>
-                    <span className="text-xs text-white/30">|</span>
-                    <span className={`text-xs ${coin.change_7d >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {coin.change_7d >= 0 ? '+' : ''}{coin.change_7d?.toFixed(2)}% 7d
-                    </span>
-                  </div>
-                  
-                  <div className="text-xs text-white/30 mt-2">
-                    MC: {formatCap(coin.market_cap)}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          ) : null}
-        </section>
 
         {/* Quick Actions */}
         <section className="mb-8">
