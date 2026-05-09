@@ -80,7 +80,7 @@ interface ModelsResponse {
   recommendedModel?: string;
 }
 
-const BACKEND = "/api";
+const BACKEND = "https://agent-ouwibo.zocomputer.io/api";
 const MODEL_STORAGE_KEY = "ouwibo_crypto_model";
 const CONVERSATION_STORAGE_KEY = "ouwibo_crypto_conversation";
 

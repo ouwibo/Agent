@@ -37,7 +37,7 @@ export default function Dashboard() {
   const fetchMarket = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/market");
+      const res = await fetch("https://agent-ouwibo.zocomputer.io/api/market");
       const data = await res.json();
       setMarket(data);
     } catch (e) {
