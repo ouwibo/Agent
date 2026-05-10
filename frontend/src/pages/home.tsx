@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { MatrixBackground } from "@/components/matrix-background";
-import { Bitcoin, TrendingUp, BarChart3, Zap, ArrowRight, Bot } from "lucide-react";
+import { Bitcoin, TrendingUp, BarChart3, Zap, ArrowRight, Bot, Clock3 } from "lucide-react";
 
 const features = [
   { icon: TrendingUp, title: "Market Analysis", desc: "Real-time crypto price analysis and trend prediction" },
@@ -166,16 +166,28 @@ export default function Home() {
           viewport={{ once: true }}
           className="max-w-xl mx-auto"
         >
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to analyze?</h2>
-          <p className="text-white/50 mb-8">Start your crypto market analysis with AI-powered insights.</p>
-          <Link
-            href="/agent"
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-primary text-black font-semibold hover:opacity-90 transition-opacity"
-          >
-            <Bot className="w-5 h-5" />
-            Start AI Analysis
-            <ArrowRight className="w-5 h-5" />
-          </Link>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-white/60 text-xs font-mono tracking-[0.25em] mb-4">
+            <Clock3 className="w-3.5 h-3.5 text-primary" />
+            COMING SOON
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Get Started</h2>
+          <p className="text-white/50 mb-8">Fitur onboarding dan jalur cepat sedang disiapkan. Sementara itu, dashboard dan AI agent tetap bisa dipakai.</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-full bg-primary text-black font-semibold hover:opacity-90 transition-opacity"
+            >
+              Open Dashboard
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            <Link
+              href="/agent"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-full border border-white/15 bg-white/5 text-white/80 hover:bg-white/10 transition-colors"
+            >
+              <Bot className="w-5 h-5 text-primary" />
+              Try AI Agent
+            </Link>
+          </div>
         </motion.div>
       </section>
 
